@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  classpulse-frontend:
+    container_name: classpulse-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9002:9002"
+    environment:
+      # Use the .env.local file for environment variables
+      - NODE_ENV=development
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    # The command to run in development mode
+    command: npm run dev
+
+# Note: This docker-compose file is for local development of the Next.js frontend ONLY.
+# The n8n instance should be run separately as per n8n's documentation.
+# For production, you would build the image and deploy it to a service like AWS ECS/Fargate.
