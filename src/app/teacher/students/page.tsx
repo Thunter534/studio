@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AddStudentDrawer } from '@/components/add-student-drawer';
 import { Input } from '@/components/ui/input';
 
-const N8N_STUDENT_LIST_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook-test/0889db3b-9b44-46a2-a5a2-0e1513fb884b';
+const N8N_STUDENT_LIST_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/0889db3b-9b44-46a2-a5a2-0e1513fb884b';
 const STUDENT_LIST_CACHE_KEY = 'n8n:student-list';
 
 const readStudentsCache = (): { timestamp: number; data: StudentListItem[] } | null => {

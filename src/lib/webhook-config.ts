@@ -14,10 +14,10 @@ export const webhookUrls: Record<EventName, string | undefined> = {
 
   // Assessments
   NEW_ASSESSMENT_START: process.env.N8N_NEW_ASSESSMENT_START_URL,
-  ASSESSMENT_CREATE_DRAFT: 'https://n8n.srv1336679.hstgr.cloud/webhook-test/73bb05d7-eeea-40f3-b782-c694207c737b',
-  ASSESSMENT_GET: 'https://n8n.srv1336679.hstgr.cloud/webhook-test/bdb41ebb-b815-4885-8d93-d5ed1186e436',
-  ASSESSMENT_FINALIZE: 'https://n8n.srv1336679.hstgr.cloud/webhook-test/d4f42b0c-2365-4597-a5e7-e0c75159d014',
-  ASSESSMENT_MARK_COMPLETE: 'https://n8n.srv1336679.hstgr.cloud/webhook-test/05677d6a-1bed-4ea8-aed0-e6b5359ac7ce',
+  ASSESSMENT_CREATE_DRAFT: 'https://n8n.srv1336679.hstgr.cloud/webhook/73bb05d7-eeea-40f3-b782-c694207c737b',
+  ASSESSMENT_GET: 'https://n8n.srv1336679.hstgr.cloud/webhook/bdb41ebb-b815-4885-8d93-d5ed1186e436',
+  ASSESSMENT_FINALIZE: 'https://n8n.srv1336679.hstgr.cloud/webhook/d4f42b0c-2365-4597-a5e7-e0c75159d014',
+  ASSESSMENT_MARK_COMPLETE: 'https://n8n.srv1336679.hstgr.cloud/webhook/05677d6a-1bed-4ea8-aed0-e6b5359ac7ce',
   ASSESSMENT_TYPED_UPLOAD: process.env.N8N_ASSESSMENT_TYPED_UPLOAD_URL,
   ASSESSMENT_IMAGE_UPLOAD: process.env.N8N_ASSESSMENT_IMAGE_UPLOAD_URL,
   ASSESSMENT_EXTRACT_TEXT: process.env.N8N_ASSESSMENT_EXTRACT_TEXT_URL,
@@ -28,7 +28,7 @@ export const webhookUrls: Record<EventName, string | undefined> = {
   ASSESSMENT_SAVE_TEACHER_FEEDBACK: process.env.N8N_ASSESSMENT_SAVE_TEACHER_FEEDBACK_URL,
   ASSESSMENT_SET_RUBRIC: process.env.N8N_ASSESSMENT_SET_RUBRIC_URL,
   ASSESSMENT_SAVE_RUBRIC_OVERRIDE: process.env.N8N_ASSESSMENT_SAVE_RUBRIC_OVERRIDE_URL,
-  ASSESSMENT_LIST: 'https://n8n.srv1336679.hstgr.cloud/webhook-test/843732eb-f3ca-45c7-b841-08cd7131944c',
+  ASSESSMENT_LIST: 'https://n8n.srv1336679.hstgr.cloud/webhook/843732eb-f3ca-45c7-b841-08cd7131944c',
   ASSESSMENT_GET_STUDENTS_FOR_ASSIGNMENT: process.env.N8N_ASSESSMENT_GET_STUDENTS_FOR_ASSIGNMENT_URL,
   ASSESSMENT_SAVE_TYPED: process.env.N8N_ASSESSMENT_SAVE_TYPED_URL,
 
@@ -40,11 +40,11 @@ export const webhookUrls: Record<EventName, string | undefined> = {
   STUDENT_IMPORT_PROCESS: process.env.N8N_STUDENT_IMPORT_PROCESS_URL,
 
   // Rubrics
-  RUBRIC_LIST: 'https://n8n.srv1336679.hstgr.cloud/webhook-test/7a150c7d-8742-402b-baf9-54efeecc3550',
+  RUBRIC_LIST: 'https://n8n.srv1336679.hstgr.cloud/webhook/7a150c7d-8742-402b-baf9-54efeecc3550',
 
   // Reports
-  REPORTS_LIST: 'https://n8n.srv1336679.hstgr.cloud/webhook-test/752041fd-27e7-4046-89de-ffd89e4ccac3',
-  REPORT_GET: 'https://n8n.srv1336679.hstgr.cloud/webhook-test/a8a68dab-f1a8-430c-8e00-8e6e9f75b344',
+  REPORTS_LIST: 'https://n8n.srv1336679.hstgr.cloud/webhook/752041fd-27e7-4046-89de-ffd89e4ccac3',
+  REPORT_GET: 'https://n8n.srv1336679.hstgr.cloud/webhook/a8a68dab-f1a8-430c-8e00-8e6e9f75b344',
   REPORT_GENERATE: process.env.N8N_REPORT_GENERATE_URL,
   REPORT_SEND: process.env.N8N_REPORT_SEND_URL,
   REPORT_DOWNLOAD_PDF: process.env.N8N_REPORT_DOWNLOAD_PDF_URL,

@@ -42,7 +42,7 @@ interface AddStudentDrawerProps {
   onSuccess: () => void;
 }
 
-const N8N_STUDENT_CREATE_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook-test/203cb33d-b8da-44fa-830c-262685238a2f';
+const N8N_STUDENT_CREATE_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/203cb33d-b8da-44fa-830c-262685238a2f';
 
 export function AddStudentDrawer({ isOpen, onOpenChange, onSuccess }: AddStudentDrawerProps) {
   const [isLoading, setIsLoading] = useState(false);

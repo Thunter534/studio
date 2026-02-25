@@ -10,7 +10,7 @@ import { useWebhook } from '@/lib/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeAssessmentIdentifier } from '@/lib/utils';
 
-const N8N_RUBRIC_GET_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook-test/58faeb49-4c9a-47fb-9d18-34ab2b6f185d';
+const N8N_RUBRIC_GET_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/58faeb49-4c9a-47fb-9d18-34ab2b6f185d';
 
 export default function GradingPage() {
   const params = useParams<{ id: string }>();

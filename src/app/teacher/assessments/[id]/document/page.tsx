@@ -9,8 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeAssessmentIdentifier } from "@/lib/utils";
 
-const N8N_ASSESSMENT_LIST_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook-test/843732eb-f3ca-45c7-b841-08cd7131944c';
-const N8N_ASSESSMENT_GET_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook-test/bdb41ebb-b815-4885-8d93-d5ed1186e436';
+const N8N_ASSESSMENT_LIST_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/843732eb-f3ca-45c7-b841-08cd7131944c';
+const N8N_ASSESSMENT_GET_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/bdb41ebb-b815-4885-8d93-d5ed1186e436';
 const ASSESSMENT_GET_CACHE_KEY_PREFIX = 'n8n:assessment:get:';
 const ASSESSMENT_LIST_CACHE_KEY = 'n8n:assessment:list';
 const DOCUMENT_TEXT_CACHE_KEY_PREFIX = 'n8n:document:text:';
@@ -372,7 +372,7 @@ export default function DocumentPage() {
 
       console.log('[Document] Payload being sent:', payload);
 
-      const response = await fetch('https://n8n.srv1336679.hstgr.cloud/webhook-test/6ac67b0a-3b19-4350-b349-1f838fdf21e9', {
+      const response = await fetch('https://n8n.srv1336679.hstgr.cloud/webhook/6ac67b0a-3b19-4350-b349-1f838fdf21e9', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

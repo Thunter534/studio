@@ -15,7 +15,7 @@ import Link from 'next/link';
 import type { StudentListItem } from '@/lib/events';
 import { normalizeAssessmentIdentifier } from '@/lib/utils';
 
-const N8N_STUDENT_LIST_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook-test/0889db3b-9b44-46a2-a5a2-0e1513fb884b';
+const N8N_STUDENT_LIST_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/0889db3b-9b44-46a2-a5a2-0e1513fb884b';
 const STUDENT_LIST_CACHE_KEY = 'n8n:student-list';
 
 export default function SetupPage() {
@@ -216,7 +216,7 @@ export default function SetupPage() {
         const formData = new FormData();
         formData.append('data', new Blob([fileBuffer], { type: lastImgFile!.type }));
 
-        const response = await fetch('https://n8n.srv1336679.hstgr.cloud/webhook-test/58ae8431-0e52-4b92-944d-4c918165b2b1', {
+        const response = await fetch('https://n8n.srv1336679.hstgr.cloud/webhook/58ae8431-0e52-4b92-944d-4c918165b2b1', {
           method: 'POST',
           body: formData,
         });

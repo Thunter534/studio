@@ -15,7 +15,7 @@ import { useState, useEffect } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
-const N8N_STUDENT_GET_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook-test/36517d38-9339-4bc2-b94a-80010891c64e';
+const N8N_STUDENT_GET_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/36517d38-9339-4bc2-b94a-80010891c64e';
 const STUDENT_DETAIL_CACHE_KEY_PREFIX = 'n8n:student-detail:';
 
 function ProfilePageSkeleton() {
