@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import type { StudentCreatePayload } from '@/lib/events';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getWebhookUrl } from '@/lib/webhook-config';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Full name must be at least 2 characters.' }),
@@ -41,8 +42,6 @@ interface AddStudentDrawerProps {
   onOpenChange: (isOpen: boolean) => void;
   onSuccess: () => void;
 }
-
-const N8N_STUDENT_CREATE_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/203cb33d-b8da-44fa-830c-262685238a2f';
 
 export function AddStudentDrawer({ isOpen, onOpenChange, onSuccess }: AddStudentDrawerProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +73,12 @@ export function AddStudentDrawer({ isOpen, onOpenChange, onSuccess }: AddStudent
         parent_email: values.parentEmail,
       };
       
-      const response = await fetch(N8N_STUDENT_CREATE_WEBHOOK, {
+      const webhookUrl = getWebhookUrl('STUDENT_CREATE');
+      if (!webhookUrl) {
+        throw new Error('Student create webhook URL is not configured');
+      }
+      
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

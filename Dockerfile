@@ -11,8 +11,12 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Copy local env file to be available during build
-COPY .env.local .env.local
+
+# Copy local env file if it exists (optional - can also use build args)
+# Note: For production builds, you should use environment variables or build args
+# instead of copying .env.local into the image
+RUN if [ -f .env.local ]; then cp .env.local .env.local; fi
+
 RUN npm run build
 
 # 3. Production image
@@ -27,6 +31,7 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Copy public directory (create empty one if it doesn't exist in builder)
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules

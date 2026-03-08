@@ -14,8 +14,9 @@ import { StudentReportsTab } from "@/components/student-reports-tab";
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { getWebhookUrl } from '@/lib/webhook-config';
+import { getMockResponse } from '@/lib/mock-api';
 
-const N8N_STUDENT_GET_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/36517d38-9339-4bc2-b94a-80010891c64e';
 const STUDENT_DETAIL_CACHE_KEY_PREFIX = 'n8n:student-detail:';
 
 function ProfilePageSkeleton() {
@@ -95,7 +96,11 @@ export default function StudentDetailPage() {
     try {
       console.log('[StudentDetail] Fetching student:', pageParams.studentIdNumber);
       
-      const response = await fetch(N8N_STUDENT_GET_WEBHOOK, {
+      const webhookUrl = getWebhookUrl('STUDENT_GET');
+      let result: any;
+      
+      if (webhookUrl) {
+        const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -107,8 +112,21 @@ export default function StudentDetailPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
+      result = await response.json();
       console.log('[StudentDetail] Response from n8n:', result);
+      } else {
+        // Use mock data
+        console.warn('[StudentDetail] No webhook configured, using mock data');
+        const mockRequest = {
+          eventName: 'STUDENT_GET' as const,
+          requestId: crypto.randomUUID(),
+          timestamp: new Date().toISOString(),
+          actor: { role: 'teacher' as const, userId: 'teacher-01' },
+          payload: { studentId: pageParams.studentIdNumber },
+        };
+        const mockResponse = getMockResponse(mockRequest);
+        result = mockResponse?.success ? mockResponse.data : null;
+      }
 
       // Map snake_case to camelCase
       if (result && result.name) {
@@ -148,6 +166,9 @@ export default function StudentDetailPage() {
       
     } catch (err) {
       console.error('[StudentDetail] Error:', err);
+      
+      // Try cache first
+      let dataLoaded = false;
       if (typeof window !== 'undefined') {
         const rawValue = window.localStorage.getItem(cacheKey);
         if (rawValue) {
@@ -156,14 +177,44 @@ export default function StudentDetailPage() {
             if (cached?.data) {
               setStudent(cached.data);
               setError(null);
-              return;
+              dataLoaded = true;
             }
           } catch {
             window.localStorage.removeItem(cacheKey);
           }
         }
       }
-      setError(err instanceof Error ? err.message : 'Failed to load student');
+      
+      // Fallback to mock data
+      if (!dataLoaded) {
+        try {
+          console.warn('[StudentDetail] Using mock data as final fallback');
+          const mockRequest = {
+            eventName: 'STUDENT_GET' as const,
+            requestId: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            actor: { role: 'teacher' as const, userId: 'teacher-01' },
+            payload: { studentId: pageParams.studentIdNumber },
+          };
+          const mockResponse = getMockResponse(mockRequest);
+          if (mockResponse?.success && mockResponse.data?.student) {
+            const mockStudent: StudentListItem = {
+              name: mockResponse.data.student.name,
+              studentIdNumber: mockResponse.data.student.studentIdNumber,
+              grade: mockResponse.data.student.grade,
+              studentEmail: mockResponse.data.student.studentEmail,
+              parentEmail: mockResponse.data.student.parentEmail,
+            };
+            setStudent(mockStudent);
+            setError(null);
+          } else {
+            setError(err instanceof Error ? err.message : 'Failed to load student');
+          }
+        } catch (mockError) {
+          console.error('[StudentDetail] Mock data fallback failed:', mockError);
+          setError(err instanceof Error ? err.message : 'Failed to load student');
+        }
+      }
     } finally {
       setIsLoading(false);
     }

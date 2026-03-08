@@ -9,8 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useWebhook } from '@/lib/hooks';
 import { useToast } from '@/hooks/use-toast';
 import { normalizeAssessmentIdentifier } from '@/lib/utils';
-
-const N8N_RUBRIC_GET_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/58faeb49-4c9a-47fb-9d18-34ab2b6f185d';
+import { getWebhookUrl } from '@/lib/webhook-config';
 
 export default function GradingPage() {
   const params = useParams<{ id: string }>();
@@ -255,7 +254,12 @@ export default function GradingPage() {
       }
 
       try {
-        const response = await fetch(N8N_RUBRIC_GET_WEBHOOK, {
+        const webhookUrl = getWebhookUrl('RUBRIC_GET');
+        if (!webhookUrl) {
+          throw new Error('Rubric get webhook URL is not configured');
+        }
+
+        const response = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

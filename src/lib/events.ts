@@ -27,6 +27,7 @@ export type EventName =
   | 'ASSESSMENT_LIST'
   | 'ASSESSMENT_GET_STUDENTS_FOR_ASSIGNMENT'
   | 'ASSESSMENT_SAVE_TYPED'
+  | 'ASSESSMENT_IMAGE_EXTRACT'
   
   // Students
   | 'STUDENT_LIST'
@@ -37,6 +38,7 @@ export type EventName =
 
   // Rubrics
   | 'RUBRIC_LIST'
+  | 'RUBRIC_GET'
 
   // Reports
   | 'REPORTS_LIST'

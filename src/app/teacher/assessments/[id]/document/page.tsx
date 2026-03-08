@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeAssessmentIdentifier } from "@/lib/utils";
+import { getWebhookUrl } from '@/lib/webhook-config';
+import { getMockResponse } from '@/lib/mock-api';
 
-const N8N_ASSESSMENT_LIST_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/843732eb-f3ca-45c7-b841-08cd7131944c';
-const N8N_ASSESSMENT_GET_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/bdb41ebb-b815-4885-8d93-d5ed1186e436';
 const ASSESSMENT_GET_CACHE_KEY_PREFIX = 'n8n:assessment:get:';
 const ASSESSMENT_LIST_CACHE_KEY = 'n8n:assessment:list';
 const DOCUMENT_TEXT_CACHE_KEY_PREFIX = 'n8n:document:text:';
@@ -53,7 +53,13 @@ export default function DocumentPage() {
 
       setIsLoading(true);
       try {
-        const response = await fetch(N8N_ASSESSMENT_GET_WEBHOOK, {
+        const webhookUrl = getWebhookUrl('ASSESSMENT_GET');
+        
+        let result: any;
+        
+        if (webhookUrl) {
+          // Try webhook first
+          const response = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -72,21 +78,36 @@ export default function DocumentPage() {
           }),
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
-        const rawBody = await response.text();
-        if (!rawBody) {
-          throw new Error('Empty response body');
-        }
+          const rawBody = await response.text();
+          if (!rawBody) {
+            throw new Error('Empty response body');
+          }
 
-        let result: any;
-        try {
-          result = JSON.parse(rawBody);
-        } catch (parseError) {
-          console.warn('[Document] Non-JSON response from assessment-get:', rawBody);
-          throw parseError;
+          try {
+            result = JSON.parse(rawBody);
+          } catch (parseError) {
+            console.warn('[Document] Non-JSON response from assessment-get:', rawBody);
+            throw parseError;
+          }
+        } else {
+          // Use mock data if no webhook configured
+          console.warn('[Document] No webhook URL configured, using mock data');
+          const mockRequest = {
+            eventName: 'ASSESSMENT_GET' as const,
+            requestId: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            actor: { role: 'teacher' as const, userId: 'teacher-01' },
+            payload: { assessmentId: requestAssessmentId || '' },
+          };
+          const mockResponse = getMockResponse(mockRequest);
+          result = mockResponse?.success ? mockResponse.data : null;
+          if (!result) {
+            throw new Error('No mock data available');
+          }
         }
         const rawItems = Array.isArray(result)
           ? result
@@ -133,6 +154,9 @@ export default function DocumentPage() {
         }
       } catch (error) {
         console.warn('[Document] Failed to fetch assessment:', error);
+        
+        // Try cache first
+        let dataLoaded = false;
         if (cacheKey && typeof window !== 'undefined') {
           const cachedValue = window.localStorage.getItem(cacheKey);
           if (cachedValue) {
@@ -149,10 +173,37 @@ export default function DocumentPage() {
                 if (resolvedRubricName) {
                   setRubricName(resolvedRubricName);
                 }
+                dataLoaded = true;
               }
             } catch {
               window.localStorage.removeItem(cacheKey);
             }
+          }
+        }
+        
+        // If no cache, try mock data as final fallback
+        if (!dataLoaded) {
+          try {
+            console.warn('[Document] No cache available, using mock data as fallback');
+            const mockRequest = {
+              eventName: 'ASSESSMENT_GET' as const,
+              requestId: crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+              actor: { role: 'teacher' as const, userId: 'teacher-01' },
+              payload: { assessmentId: requestAssessmentId || '' },
+            };
+            const mockResponse = getMockResponse(mockRequest);
+            if (mockResponse?.success && mockResponse.data?.assessment) {
+              setAssessmentData({ assessment: mockResponse.data.assessment });
+              const resolvedRubricName = mockResponse.data.assessment.rubricName
+                ?? mockResponse.data.assessment.rubric_name
+                ?? null;
+              if (resolvedRubricName) {
+                setRubricName(resolvedRubricName);
+              }
+            }
+          } catch (mockError) {
+            console.error('[Document] Mock data fallback failed:', mockError);
           }
         }
       } finally {
@@ -179,7 +230,11 @@ export default function DocumentPage() {
           : null;
         const fallbackTitle = storedTitle || assignmentTitle || assessmentData?.assessment?.title || null;
 
-        const response = await fetch(N8N_ASSESSMENT_LIST_WEBHOOK, {
+        const webhookUrl = getWebhookUrl('ASSESSMENT_LIST');
+        let result: any;
+        
+        if (webhookUrl) {
+          const response = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -187,11 +242,24 @@ export default function DocumentPage() {
           body: JSON.stringify({}),
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
-        const result = await response.json();
+          result = await response.json();
+        } else {
+          // Use mock data if no webhook
+          console.warn('[Document] No ASSESSMENT_LIST webhook, using mock data');
+          const mockRequest = {
+            eventName: 'ASSESSMENT_LIST' as const,
+            requestId: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            actor: { role: 'teacher' as const, userId: 'teacher-01' },
+            payload: {},
+          };
+          const mockResponse = getMockResponse(mockRequest);
+          result = mockResponse?.success ? mockResponse.data : null;
+        }
         const rawItems = Array.isArray(result)
           ? result
           : result?.data?.items || result?.data?.assessments || result?.items || result?.assessments;
@@ -219,6 +287,9 @@ export default function DocumentPage() {
         }
       } catch (error) {
         console.warn('[Document] Failed to fetch rubric info:', error);
+        
+        // Try cache first
+        let dataLoaded = false;
         if (typeof window !== 'undefined') {
           const cachedValue = window.localStorage.getItem(ASSESSMENT_LIST_CACHE_KEY);
           if (cachedValue) {
@@ -236,11 +307,36 @@ export default function DocumentPage() {
                 });
                 if (matched) {
                   setRubricName(matched.rubricName ?? matched.rubric_name ?? matched.rubricId ?? matched.rubric_id ?? matched.rubric ?? null);
+                  dataLoaded = true;
                 }
               }
             } catch {
               window.localStorage.removeItem(ASSESSMENT_LIST_CACHE_KEY);
             }
+          }
+        }
+        
+        // Fallback to mock data
+        if (!dataLoaded) {
+          try {
+            console.warn('[Document] Using mock data for rubric info');
+            const mockRequest = {
+              eventName: 'ASSESSMENT_LIST' as const,
+              requestId: crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+              actor: { role: 'teacher' as const, userId: 'teacher-01' },
+              payload: {},
+            };
+            const mockResponse = getMockResponse(mockRequest);
+            if (mockResponse?.success && mockResponse.data?.items) {
+              const items = mockResponse.data.items;
+              const matched = items.find((item: any) => item.assessmentId === assessmentId);
+              if (matched) {
+                setRubricName(matched.rubricName ?? matched.rubric_name ?? null);
+              }
+            }
+          } catch (mockError) {
+            console.error('[Document] Mock data fallback failed for rubric:', mockError);
           }
         }
       }
@@ -372,7 +468,12 @@ export default function DocumentPage() {
 
       console.log('[Document] Payload being sent:', payload);
 
-      const response = await fetch('https://n8n.srv1336679.hstgr.cloud/webhook/6ac67b0a-3b19-4350-b349-1f838fdf21e9', {
+      const webhookUrl = getWebhookUrl('ASSESSMENT_SUBMIT_FOR_AI_REVIEW');
+      
+      let result: any;
+      
+      if (webhookUrl) {
+        const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -380,17 +481,34 @@ export default function DocumentPage() {
         body: JSON.stringify(payload),
       });
 
-      console.log('[Document] Response status:', response.status);
-      console.log('[Document] Response ok:', response.ok);
+        console.log('[Document] Response status:', response.status);
+        console.log('[Document] Response ok:', response.ok);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[Document] Error response:', errorText);
-        throw new Error('Failed to submit for AI review');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[Document] Error response:', errorText);
+          throw new Error('Failed to submit for AI review');
+        }
+
+        result = await response.json();
+        console.log('[Document] Success response:', result);
+      } else {
+        // Use mock data if no webhook
+        console.warn('[Document] No AI review webhook, using mock data');
+        const mockRequest = {
+          eventName: 'ASSESSMENT_SUBMIT_FOR_AI_REVIEW' as const,
+          requestId: crypto.randomUUID(),
+          timestamp: new Date().toISOString(),
+          actor: { role: 'teacher' as const, userId: 'teacher-01' },
+          payload: {
+            assessmentId: payload.assessmentId,
+            text: payload.extractedText,
+          },
+        };
+        const mockResponse = getMockResponse(mockRequest);
+        result = mockResponse?.success ? mockResponse.data : { assessment: null };
+        console.log('[Document] Mock response:', result);
       }
-
-      const result = await response.json();
-      console.log('[Document] Success response:', result);
 
       const extractAiTextFromResult = (value: any): string | null => {
         if (!value) {

@@ -12,8 +12,9 @@ import type { StudentListItem } from '@/lib/events';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AddStudentDrawer } from '@/components/add-student-drawer';
 import { Input } from '@/components/ui/input';
+import { getWebhookUrl } from '@/lib/webhook-config';
+import { getMockResponse } from '@/lib/mock-api';
 
-const N8N_STUDENT_LIST_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/0889db3b-9b44-46a2-a5a2-0e1513fb884b';
 const STUDENT_LIST_CACHE_KEY = 'n8n:student-list';
 
 const readStudentsCache = (): { timestamp: number; data: StudentListItem[] } | null => {
@@ -106,7 +107,11 @@ export default function StudentsPage() {
         try {
             console.log('[StudentList] Fetching from n8n webhook...');
             
-            const response = await fetch(N8N_STUDENT_LIST_WEBHOOK, {
+            const webhookUrl = getWebhookUrl('STUDENT_LIST');
+            let result: any;
+            
+            if (webhookUrl) {
+                const response = await fetch(webhookUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -114,33 +119,50 @@ export default function StudentsPage() {
                 body: JSON.stringify({}),
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-            const result = await response.json();
-            console.log('[StudentList] Response from n8n:', result);
+                result = await response.json();
+                console.log('[StudentList] Response from n8n:', result);
+            } else {
+                // Use mock data
+                console.warn('[StudentList] No webhook URL configured, using mock data');
+                const mockRequest = {
+                    eventName: 'STUDENT_LIST' as const,
+                    requestId: crypto.randomUUID(),
+                    timestamp: new Date().toISOString(),
+                    actor: { role: 'teacher' as const, userId: 'teacher-01' },
+                    payload: {},
+                };
+                const mockResponse = getMockResponse(mockRequest);
+                result = mockResponse?.success ? mockResponse.data?.students || [] : [];
+            }
 
             // Handle array response from n8n with snake_case field mapping
             if (Array.isArray(result)) {
-                const mappedStudents = result.map((student: any) => ({
-                    name: student.name,
-                    studentIdNumber: student.student_id,
-                    grade: student.grade,
-                    studentEmail: student.student_email,
-                    parentEmail: student.parent_email,
-                }));
+                const mappedStudents = result
+                    .filter((item: any) => item.name && item.student_id) // Filter out index/metadata entries
+                    .map((student: any) => ({
+                        name: student.name,
+                        studentIdNumber: student.student_id,
+                        grade: student.grade,
+                        studentEmail: student.student_email,
+                        parentEmail: student.parent_email,
+                    }));
                 setStudents(mappedStudents);
                 writeStudentsCache(mappedStudents);
             } else if (result.success && result.data?.students) {
                 // Handle wrapped format if n8n changes to that
-                const mappedStudents = result.data.students.map((student: any) => ({
-                    name: student.name,
-                    studentIdNumber: student.student_id,
-                    grade: student.grade,
-                    studentEmail: student.student_email,
-                    parentEmail: student.parent_email,
-                }));
+                const mappedStudents = result.data.students
+                    .filter((item: any) => item.name && item.student_id) // Filter out index/metadata entries
+                    .map((student: any) => ({
+                        name: student.name,
+                        studentIdNumber: student.student_id,
+                        grade: student.grade,
+                        studentEmail: student.student_email,
+                        parentEmail: student.parent_email,
+                    }));
                 setStudents(mappedStudents);
                 writeStudentsCache(mappedStudents);
             } else {

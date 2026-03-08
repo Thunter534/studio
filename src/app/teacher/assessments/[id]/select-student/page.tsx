@@ -9,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, ChevronRight } from 'lucide-react';
+import { getWebhookUrl } from '@/lib/webhook-config';
 
-const N8N_STUDENT_LIST_WEBHOOK = 'https://n8n.srv1336679.hstgr.cloud/webhook/0889db3b-9b44-46a2-a5a2-0e1513fb884b';
 const STUDENT_LIST_CACHE_KEY = 'n8n:student-list';
 
 type StudentItem = {
@@ -107,7 +107,12 @@ export default function SelectStudentPage() {
     setError(null);
 
     try {
-      const response = await fetch(N8N_STUDENT_LIST_WEBHOOK, {
+      const webhookUrl = getWebhookUrl('STUDENT_LIST');
+      if (!webhookUrl) {
+        throw new Error('Student list webhook URL is not configured');
+      }
+      
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
