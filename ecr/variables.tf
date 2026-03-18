@@ -1,0 +1,56 @@
+variable "vpc-name" {}
+variable "igw-name" {}
+variable "rt-name2" {}
+variable "subnet-name" {}
+variable "subnet-name2" {}
+variable "security-group-name" {}
+variable "vpc_private1_subnet1_cidr_block" {}
+variable "vpc_private2_subnet1_cidr_block" {}
+variable "availability_zone" {}
+variable "route_table2_ipv4_cidr_block" {}
+variable "nat-eip" {}
+variable "nat-gateway-name" {}
+variable "sg-name" {}
+variable "ecs_sg_name" {}
+variable "alb_sg_name" {}
+variable "db_port" {}
+variable "app_port" {}
+variable "rds_sg_name" {}
+variable "alb_name" {}
+variable "public_subnet_2_cidr_block" {}
+variable "availability_zone_2" {}
+variable "public_subnet_2_name" {}
+variable "public_route_table_name" {}
+variable "rt-name" {}
+variable "s3_bucket_name" {}
+variable "s3_tag_name" {}
+variable "target_group_name" {}
+variable "ecr_repository_name" {}
+variable "app_bucket_name" {}
+variable "aws_region" {}
+variable "ecs_cluster_name" {}
+variable "ecs_task_family" {}
+variable "ecs_task_cpu" {}
+variable "ecs_task_memory" {}
+variable "container_name" {}
+variable "image_tag" {}
+variable "ecs_name_service" {}
+variable "db_subnet_group_name" {}
+variable "db_instance_identifier" {}
+variable "db_engine" {}
+variable "db_engine_version" {}
+variable "db_instance_class" {}
+variable "db_name" {}
+variable "db_username" {}
+variable "db_password" {
+  type      = string
+  sensitive = true
+}
+variable "db_allocated_storage" {
+  type = number
+}
+variable "db_secret_name" {}
+
+variable "subnet_name" {}
+variable "public_subnet_az" {}
+variable "nat_gateway_name" {}

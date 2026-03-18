@@ -1,11 +1,10 @@
-/*
 data "aws_security_group" "jenkins_sg" {
   filter {
     name   = "tag:Name"
     values = [var.security-group-name]
   }
 }
-*/
+
 #--------- security group for ecs ---------
 
 resource "aws_security_group" "ecs_sg" {
@@ -22,7 +21,7 @@ resource "aws_security_group" "ecs_sg" {
     prefix_list_ids  = []
     security_groups  = [aws_security_group.alb_sg.id]
   }
-  /*
+
   ingress {
     description     = "Optional admin/test access from Jenkins"
     from_port       = var.app_port
@@ -31,7 +30,7 @@ resource "aws_security_group" "ecs_sg" {
     security_groups = [data.aws_security_group.jenkins_sg.id]
   }
 
-*/
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -57,7 +56,6 @@ resource "aws_security_group" "rds_sg" {
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs_sg.id]
   }
-  /*
   ingress {
     description     = " DB admin access from Jenkins"
     from_port       = var.db_port
@@ -65,7 +63,7 @@ resource "aws_security_group" "rds_sg" {
     protocol        = "tcp"
     security_groups = [data.aws_security_group.jenkins_sg.id]
   }
-*/
+
   egress {
     from_port   = 0
     to_port     = 0

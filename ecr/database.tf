@@ -1,8 +1,8 @@
 resource "aws_db_subnet_group" "main" {
   name = var.db_subnet_group_name
   subnet_ids = [
-    aws_subnet.private1_subnet1.id,
-    aws_subnet.private2_subnet1.id
+    aws_subnet.private1-subnet1.id,
+    aws_subnet.private2-subnet1.id
   ]
 
   tags = {

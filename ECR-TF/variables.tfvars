@@ -1,48 +1,61 @@
-vpc-name            = "Athena-vpc"
-igw-name            = "Athena-igw"
-subnet-name         = "Athena-subnet"
-subnet-name2        = "Athena-subnet2"
-security-group-name = "Athena-sg"
-rt-name2            = "Athena-route-table2"
-vpc_private1_subnet1_cidr_block = "10.0.1.0/24"
-vpc_private2_subnet1_cidr_block = "10.0.2.0/24"
-availability_zone = "us-east-1a"
-route_table2_ipv4_cidr_block = "0.0.0.0/0"
-nat-eip = "Athena-nat-eip"
-nat-gateway-name = "Athena-nat-gateway"2
-sg-name = "Athena-sg"
-alb_sg_name     = "Athena-alb-sg"
-ecs_sg_name     = "Athena-ecs-sg"
-rds_sg_name     = "Athena-rds-sg"
-app_port        = 3000
-db_port         = 5432
 alb_name          = "Athena-alb"
-public_subnet_2_cidr_block = "10.0.3.0/24"
-availability_zone_2        = "us-east-1b"
-public_subnet_2_name       = "Athena-public-subnet-2"
-public_route_table_name    = "Athena-public-rt"
-rt-name       = "Athena-route-table"
-s3_bucket_name = "alb-logs-athena"
-s3_tag_name    = "S3 bucket for ALB logs"
 target_group_name = "Athena-target-group"
-ecr_repository_name = "Athena-Repo"
-app_bucket_name = "athena-app-bucket"
-aws_region       = "us-east-1"
+app_port          = 3000
+
+aws_region = "us-east-1"
+
+ecr_repository_name = "athena-repo"
+
 ecs_cluster_name = "Athena-ecs-cluster"
-ecs_task_family  = "Athena-app-task"
+ecs_task_family  = "Athena-task"
 ecs_task_cpu     = "256"
 ecs_task_memory  = "512"
-container_name   = "athena-app"
+container_name   = "athena-container"
 image_tag        = "latest"
-app_bucket_name  = "athena-app-bucket"
 ecs_name_service = "Athena-ecs-service"
+
+app_bucket_name = "athena-app-storage-loic-001"
+s3_bucket_name  = "alb-logs-athena-loic-001"
+s3_tag_name     = "Athena-ALB-Logs"
+
+db_secret_name = "athena-db-secret"
+
 db_subnet_group_name   = "athena-db-subnet-group"
 db_instance_identifier = "athena-db"
 db_allocated_storage   = 20
-db_engine              = "postgres"
-db_engine_version      = "16.3"
+db_engine              = "mysql"
+db_engine_version      = "8.0"
 db_instance_class      = "db.t3.micro"
 db_name                = "athenadb"
-db_username            = "athenaadmin"
-db_password            = "ChangeThisStrongPassword123!"
-db_secret_name = "athena/db/credentials"
+db_username            = "admin"
+db_password            = "ChangeMe123!"
+db_port                = 3306
+
+ecs_sg_name         = "Athena-ecs-sg"
+rds_sg_name         = "Athena-rds-sg"
+alb_sg_name         = "Athena-alb-sg"
+security-group-name = "Jenkins-sg"
+
+vpc_name = "Athena-vpc"
+igw_name = "Athena-igw"
+rt_name  = "Athena-route-table"
+rt_name2 = "Athena-route-table2"
+
+nat_eip          = "Athena-nat-eip"
+nat_gateway_name = "Athena-nat-gateway"
+
+public_subnet_1_cidr_block = "10.0.1.0/24"
+public_subnet_1_name       = "Athena-public-subnet-1"
+public_subnet_2_cidr_block = "10.0.3.0/24"
+public_subnet_2_name       = "Athena-public-subnet-2"
+
+private_subnet_1_name = "Athena-private-subnet-1"
+private_subnet_2_name = "Athena-private-subnet-2"
+
+availability_zone   = "us-east-1a"
+availability_zone_2 = "us-east-1b"
+
+vpc_private1_subnet1_cidr_block = "10.0.4.0/24"
+vpc_private2_subnet1_cidr_block = "10.0.2.0/24"
+
+route_table2_ipv4_cidr_block = "0.0.0.0/0"

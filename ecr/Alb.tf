@@ -3,7 +3,7 @@ resource "aws_lb" "alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
-  subnets            = [aws_subnet.public_subnet_1.id, aws_subnet.public_subnet_2.id]
+  subnets            = [data.aws_subnet.public-subnet.id, aws_subnet.public_subnet_2.id]
 
   enable_deletion_protection = false
 
@@ -46,3 +46,4 @@ resource "aws_lb_listener" "alb_listener" {
     target_group_arn = aws_lb_target_group.ecs_tg.arn
   }
 }
+
