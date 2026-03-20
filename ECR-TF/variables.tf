@@ -58,3 +58,20 @@ variable "availability_zone_2" {}
 variable "vpc_private1_subnet1_cidr_block" {}
 variable "vpc_private2_subnet1_cidr_block" {}
 variable "route_table2_ipv4_cidr_block" {}
+
+variable "efs_name" {}
+variable "efs_creation_token" {}
+variable "efs_sg_name" {}
+
+variable "n8n_task_family" {}
+variable "n8n_container_name" {}
+variable "n8n_image" {}
+variable "n8n_cpu" {}
+variable "n8n_memory" {}
+variable "n8n_service_name" {}
+variable "n8n_port" {
+  type = number
+}
+
+variable "root_domain_name" {}
+variable "subdomain_name" {}

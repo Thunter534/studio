@@ -23,13 +23,13 @@ db_secret_name = "athena-db-secret"
 db_subnet_group_name   = "athena-db-subnet-group"
 db_instance_identifier = "athena-db"
 db_allocated_storage   = 20
-db_engine              = "mysql"
-db_engine_version      = "8.0"
+db_engine              = "postgres"
+db_engine_version      = "16.3"
 db_instance_class      = "db.t3.micro"
 db_name                = "athenadb"
 db_username            = "admin"
 db_password            = "ChangeMe123!"
-db_port                = 3306
+db_port                = 5432
 
 ecs_sg_name         = "Athena-ecs-sg"
 rds_sg_name         = "Athena-rds-sg"
@@ -59,3 +59,18 @@ vpc_private1_subnet1_cidr_block = "10.0.4.0/24"
 vpc_private2_subnet1_cidr_block = "10.0.2.0/24"
 
 route_table2_ipv4_cidr_block = "0.0.0.0/0"
+
+efs_name           = "athena-n8n-efs"
+efs_creation_token = "athena-n8n-efs-token"
+efs_sg_name        = "athena-efs-sg"
+
+n8n_task_family    = "athena-n8n-task"
+n8n_container_name = "n8n"
+n8n_image          = "docker.n8n.io/n8nio/n8n:latest"
+n8n_port           = 5678
+n8n_cpu            = "512"
+n8n_memory         = "1024"
+n8n_service_name   = "athena-n8n-service"
+
+root_domain_name = "test-master.click"
+subdomain_name   = "athena.test-master.click"

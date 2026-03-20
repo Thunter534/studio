@@ -46,3 +46,33 @@ resource "aws_lb_listener" "alb_listener" {
     target_group_arn = aws_lb_target_group.ecs_tg.arn
   }
 }
+
+resource "aws_lb_target_group" "n8n_tg" {
+  name        = "athena-n8n-tg"
+  port        = var.n8n_port
+  protocol    = "HTTP"
+  vpc_id      = data.aws_vpc.vpc.id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    path                = "/healthz"
+    protocol            = "HTTP"
+    matcher             = "200,204,301,302"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_lb_listener" "n8n_http" {
+  load_balancer_arn = aws_lb.alb.arn
+  port              = 5678
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.n8n_tg.arn
+  }
+}

@@ -29,7 +29,7 @@ resource "aws_ecs_task_definition" "app" {
   container_definitions = jsonencode([
     {
       name      = var.container_name
-      image     = "${aws_ecr_repository.athena-repo.repository_url}:${var.image_tag}"
+      image     = "${aws_ecr_repository.athena_repo.repository_url}:${var.image_tag}"
       essential = true
       secrets = [
         {
@@ -70,11 +70,15 @@ resource "aws_ecs_task_definition" "app" {
       environment = [
         {
           name  = "APP_PORT"
-          value = tostring("${var.app_port}")
+          value = tostring(var.app_port)
         },
         {
           name  = "S3_BUCKET_NAME"
           value = var.app_bucket_name
+        },
+        {
+          name  = "DB_HOST"
+          value = aws_db_instance.main.address
         }
       ]
     }

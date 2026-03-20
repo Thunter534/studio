@@ -6,7 +6,7 @@ resource "aws_iam_role_policy_attachment" "AmazonECSClusterPolicy" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_s3_policy_attach" {
-  role       = aws_iam_role.ecs_task_execution_role.name
+  role       = aws_iam_role.ecs_task_role.name
   policy_arn = aws_iam_policy.ecs_task_s3_policy.arn
 }
 
@@ -70,7 +70,7 @@ resource "aws_iam_policy" "ecs_task_secrets_policy" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = aws_secretsmanager_secret.db_secret.arn
+        Resource = "${aws_secretsmanager_secret.db_secret.arn}"
       }
     ]
   })

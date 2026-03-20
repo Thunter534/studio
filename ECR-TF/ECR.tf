@@ -1,4 +1,4 @@
-resource "aws_ecr_repository" "athena-repo" {
+resource "aws_ecr_repository" "athena_repo" {
   name                 = var.ecr_repository_name
   image_tag_mutability = "IMMUTABLE"
 
@@ -6,12 +6,12 @@ resource "aws_ecr_repository" "athena-repo" {
     scan_on_push = true
   }
   tags = {
-    Name = "ecr-Athena-Repo"
+    Name = var.ecr_repository_name
   }
 }
 
 resource "aws_ecr_lifecycle_policy" "ecr_life" {
-  repository = aws_ecr_repository.athena-repo.name
+  repository = aws_ecr_repository.athena_repo.name
 
   policy = <<EOF
 {
@@ -24,18 +24,6 @@ resource "aws_ecr_lifecycle_policy" "ecr_life" {
         "countType": "sinceImagePushed",
         "countUnit": "days",
         "countNumber": 7
-      },
-      "action": {
-        "type": "expire"
-      }
-    },
-    {
-      "rulePriority": 2,
-      "description": "Keep only the last 5 tagged images",
-      "selection": {
-        "tagStatus": "tagged",
-        "countType": "imageCountMoreThan",
-        "countNumber": 5
       },
       "action": {
         "type": "expire"
