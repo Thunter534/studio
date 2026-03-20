@@ -31,7 +31,7 @@ variable "db_username" {}
 variable "db_password" {}
 variable "db_port" {}
 
-variable "ecs_sg_name" {}
+variable "app_ecs_sg_name" {}
 variable "rds_sg_name" {}
 variable "alb_sg_name" {}
 variable "security-group-name" {}
@@ -69,9 +69,13 @@ variable "n8n_image" {}
 variable "n8n_cpu" {}
 variable "n8n_memory" {}
 variable "n8n_service_name" {}
+variable "n8n_ecs_sg_name" {}
 variable "n8n_port" {
   type = number
 }
 
 variable "root_domain_name" {}
 variable "subdomain_name" {}
+
+variable "cognito_user_pool_name" {}
+variable "cognito_user_pool_client_name" {}

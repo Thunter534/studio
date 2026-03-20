@@ -31,7 +31,7 @@ db_username            = "admin"
 db_password            = "ChangeMe123!"
 db_port                = 5432
 
-ecs_sg_name         = "Athena-ecs-sg"
+app_ecs_sg_name         = "Athena-ecs-sg"
 rds_sg_name         = "Athena-rds-sg"
 alb_sg_name         = "Athena-alb-sg"
 security-group-name = "Jenkins-sg"
@@ -71,6 +71,10 @@ n8n_port           = 5678
 n8n_cpu            = "512"
 n8n_memory         = "1024"
 n8n_service_name   = "athena-n8n-service"
+n8n_ecs_sg_name = "Athena-n8n-ecs-sg"
 
 root_domain_name = "test-master.click"
 subdomain_name   = "athena.test-master.click"
+
+cognito_user_pool_name        = "athena-user-pool"
+cognito_user_pool_client_name = "athena-user-pool-client"

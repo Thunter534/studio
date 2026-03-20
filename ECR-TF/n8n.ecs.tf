@@ -120,7 +120,7 @@ resource "aws_ecs_service" "n8n_service" {
       aws_subnet.private1_subnet1.id,
       aws_subnet.private2_subnet1.id
     ]
-    security_groups  = [aws_security_group.ecs_sg.id]
+    security_groups  = [aws_security_group.n8n_ecs_sg.id]
     assign_public_ip = false
   }
 

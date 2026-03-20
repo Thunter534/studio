@@ -7,7 +7,7 @@ resource "aws_ecs_service" "athena_ecs_service" {
 
   network_configuration {
     subnets          = [aws_subnet.private1_subnet1.id, aws_subnet.private2_subnet1.id]
-    security_groups  = [aws_security_group.ecs_sg.id]
+    security_groups  = [aws_security_group.app_ecs_sg.id]
     assign_public_ip = false
   }
 
