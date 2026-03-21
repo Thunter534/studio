@@ -18,7 +18,7 @@ app_bucket_name = "athena-app-storage-loic-001"
 s3_bucket_name  = "alb-logs-athena-loic-001"
 s3_tag_name     = "Athena-ALB-Logs"
 
-db_secret_name = "athena-db-secret"
+db_secret_name = "athena-db-secret-v2"
 
 db_subnet_group_name   = "athena-db-subnet-group"
 db_instance_identifier = "athena-db"
@@ -27,7 +27,7 @@ db_engine              = "postgres"
 db_engine_version      = "16.3"
 db_instance_class      = "db.t3.micro"
 db_name                = "athenadb"
-db_username            = "admin"
+db_username            = "athena_admin"
 db_password            = "ChangeMe123!"
 db_port                = 5432
 
@@ -44,7 +44,7 @@ rt_name2 = "Athena-route-table2"
 nat_eip          = "Athena-nat-eip"
 nat_gateway_name = "Athena-nat-gateway"
 
-public_subnet_1_cidr_block = "10.0.1.0/24"
+public_subnet_1_cidr_block = "10.0.6.0/24"
 public_subnet_1_name       = "Athena-public-subnet-1"
 public_subnet_2_cidr_block = "10.0.3.0/24"
 public_subnet_2_name       = "Athena-public-subnet-2"
@@ -76,5 +76,5 @@ n8n_ecs_sg_name = "Athena-n8n-ecs-sg"
 root_domain_name = "test-master.click"
 subdomain_name   = "athena.test-master.click"
 
-cognito_user_pool_name        = "athena-user-pool"
 cognito_user_pool_client_name = "athena-user-pool-client"
+cognito_user_pool_name        = "athena-user-pool"

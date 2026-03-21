@@ -1,27 +1,41 @@
-resource "aws_security_group" "n8n_ecs_sg" {
-  vpc_id      = data.aws_vpc.vpc.id
-  description = "Security group for n8n ECS tasks"
+resource "aws_cognito_user_pool" "athena_users" {
+  name = var.cognito_user_pool_name
 
-  ingress {
-    description     = "n8n traffic from ALB"
-    from_port       = var.n8n_port
-    to_port         = var.n8n_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
-  }
+  username_attributes      = ["email"]
+  auto_verified_attributes = ["email"]
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  password_policy {
+    minimum_length    = 8
+    require_lowercase = true
+    require_uppercase = true
+    require_numbers   = true
+    require_symbols   = false
   }
 
   tags = {
-    Name = var.n8n_ecs_sg_name
+    Name = var.cognito_user_pool_name
   }
 }
 
+resource "aws_cognito_user_pool_client" "athena_client" {
+  name         = var.cognito_user_pool_client_name
+  user_pool_id = aws_cognito_user_pool.athena_users.id
 
+  generate_secret = false
 
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_USER_SRP_AUTH"
+  ]
 
+  supported_identity_providers = ["COGNITO"]
+
+  callback_urls = [
+    "https://${var.subdomain_name}"
+  ]
+
+  logout_urls = [
+    "https://${var.subdomain_name}"
+  ]
+}

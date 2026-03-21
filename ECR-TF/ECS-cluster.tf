@@ -78,7 +78,7 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name  = "DB_HOST"
-          value = aws_db_instance.main.address
+          value = "${aws_db_instance.athena_intance.address}"
         }
       ]
     }

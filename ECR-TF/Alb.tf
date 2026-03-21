@@ -66,13 +66,18 @@ resource "aws_lb_target_group" "n8n_tg" {
   }
 }
 
-resource "aws_lb_listener" "n8n_http" {
-  load_balancer_arn = aws_lb.alb.arn
-  port              = 80
-  protocol          = "HTTP"
+resource "aws_lb_listener_rule" "n8n_http_rule" {
+  listener_arn = aws_lb_listener.alb_listener.arn
+  priority     = 100
 
-  default_action {
+  action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.n8n_tg.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/n8n*", "/rest*"]
+    }
   }
 }

@@ -69,7 +69,7 @@ resource "aws_ecs_task_definition" "n8n" {
         },
         {
           name  = "DB_POSTGRESDB_HOST"
-          value = aws_db_instance.main.address
+          value = "${aws_db_instance.athena_intance.address}"
         }
       ]
 
@@ -130,5 +130,5 @@ resource "aws_ecs_service" "n8n_service" {
     container_port   = var.n8n_port
   }
 
-  depends_on = [aws_lb_listener.n8n_http]
+  depends_on = [aws_lb_listener_rule.n8n_http_rule]
 }

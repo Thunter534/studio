@@ -1,4 +1,4 @@
-resource "aws_db_subnet_group" "main" {
+resource "aws_db_subnet_group" "athena_db" {
   name = var.db_subnet_group_name
   subnet_ids = [
     aws_subnet.private1_subnet1.id,
@@ -10,7 +10,7 @@ resource "aws_db_subnet_group" "main" {
   }
 }
 
-resource "aws_db_instance" "main" {
+resource "aws_db_instance" "athena_intance" {
   identifier        = var.db_instance_identifier
   allocated_storage = var.db_allocated_storage
   engine            = var.db_engine
@@ -21,7 +21,7 @@ resource "aws_db_instance" "main" {
   password          = var.db_password
   port              = var.db_port
 
-  db_subnet_group_name   = aws_db_subnet_group.main.name
+  db_subnet_group_name   = aws_db_subnet_group.athena_db.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
   publicly_accessible = false

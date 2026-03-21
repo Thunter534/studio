@@ -32,7 +32,7 @@ resource "aws_security_group" "app_ecs_sg" {
   }
 
   tags = {
-    Name = var.ecs_sg_name
+    Name = var.app_ecs_sg_name
   }
 }
 
@@ -73,7 +73,7 @@ resource "aws_security_group" "rds_sg" {
     protocol        = "tcp"
     security_groups = [aws_security_group.app_ecs_sg.id]
   }
-  
+/*
   ingress {
     description     = " n8n access from Jenkins"
     from_port       = var.n8n_port
@@ -81,7 +81,7 @@ resource "aws_security_group" "rds_sg" {
     protocol        = "tcp"
     security_groups = [data.aws_security_group.jenkins_sg.id]
   }
-
+*/
   egress {
     from_port   = 0
     to_port     = 0
