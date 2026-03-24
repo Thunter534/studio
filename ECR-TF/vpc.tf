@@ -21,22 +21,23 @@ data "aws_route_table" "public_rt" {
   }
 }
 
+data "aws_subnet" "public_subnet_1" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.vpc.id]
+  }
+
+  filter {
+    name   = "tag:Name"
+    values = [var.public_subnet_1_name]
+  }
+}
+
 resource "aws_eip" "nat_eip" {
   domain = "vpc"
 
   tags = {
     Name = var.nat_eip
-  }
-}
-
-resource "aws_subnet" "public_subnet_1" {
-  vpc_id                  = data.aws_vpc.vpc.id
-  cidr_block              = var.public_subnet_1_cidr_block
-  availability_zone       = var.availability_zone
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = var.public_subnet_1_name
   }
 }
 
@@ -51,11 +52,6 @@ resource "aws_subnet" "public_subnet_2" {
   }
 }
 
-resource "aws_route_table_association" "public_subnet_1_assoc" {
-  subnet_id      = aws_subnet.public_subnet_1.id
-  route_table_id = data.aws_route_table.public_rt.id
-}
-
 resource "aws_route_table_association" "public_subnet_2_assoc" {
   subnet_id      = aws_subnet.public_subnet_2.id
   route_table_id = data.aws_route_table.public_rt.id
@@ -63,7 +59,7 @@ resource "aws_route_table_association" "public_subnet_2_assoc" {
 
 resource "aws_nat_gateway" "nat" {
   connectivity_type = "public"
-  subnet_id         = aws_subnet.public_subnet_1.id
+  subnet_id         = data.aws_subnet.public_subnet_1.id
   allocation_id     = aws_eip.nat_eip.id
 
   tags = {

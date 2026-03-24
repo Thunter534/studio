@@ -45,7 +45,7 @@ nat_eip          = "Athena-nat-eip"
 nat_gateway_name = "Athena-nat-gateway"
 
 public_subnet_1_cidr_block = "10.0.6.0/24"
-public_subnet_1_name       = "Athena-public-subnet-1"
+public_subnet_1_name       = "Athena-subnet"
 public_subnet_2_cidr_block = "10.0.3.0/24"
 public_subnet_2_name       = "Athena-public-subnet-2"
 
