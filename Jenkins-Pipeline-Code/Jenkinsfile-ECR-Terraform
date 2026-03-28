@@ -1,0 +1,72 @@
+pipeline {
+    agent any
+    options {
+        timestamps()
+    }
+    parameters {
+        string(name: 'TFVARS_FILE', defaultValue: 'variables.tfvars', description: 'Terraform variable file')
+        booleanParam(name: 'DESTROY_INFRA', defaultValue: false, description: 'Destroy infra instead of apply')
+    }
+    environment {
+        AWS_REGION = 'us-east-1'
+        TF_IN_AUTOMATION = 'true'
+    }
+    stages {
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Thunter534/studio.git'
+            }
+        }
+        stage('Terraform Init') {
+            steps {
+                withAWS(credentials: 'aws-key', region: "${env.AWS_REGION}") {
+                dir('ECR-TF') {
+                    sh 'terraform init -input=false'
+                }
+                }
+            }
+        }
+        stage('Terraform Validate') {
+            steps {
+                withAWS(credentials: 'aws-key', region: "${env.AWS_REGION}") {
+                dir('ECR-TF') {
+                    sh 'terraform validate'
+                }
+                }
+            }
+        }
+        stage('Terraform Plan') {
+            steps {
+                withAWS(credentials: 'aws-key', region: "${env.AWS_REGION}") {
+                dir('ECR-TF') {
+                    sh "terraform plan -input=false -var-file=${params.TFVARS_FILE} -out=tfplan"
+                }
+                }
+            }
+        }
+        stage('Terraform Apply') {
+            when {
+                expression { return !params.DESTROY_INFRA }
+            }
+            steps {
+                withAWS(credentials: 'aws-key', region: "${env.AWS_REGION}") {
+                    dir('ECR-TF') {
+                        sh 'terraform apply -input=false -auto-approve tfplan'
+                    }
+                }
+            }
+        }
+        stage('Terraform Destroy') {
+            when {
+                expression { return params.DESTROY_INFRA }
+            }
+            steps {
+                withAWS(credentials: 'aws-key', region: "${env.AWS_REGION}") {
+                    dir('ECR-TF') {
+                        sh "terraform destroy -input=false -auto-approve -var-file=${params.TFVARS_FILE}"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,99 @@
+pipeline{
+    agent any
+    tools{
+        jdk 'jdk'
+        nodejs 'nodejs'
+    }
+    environment {
+        SCANNER_HOME=tool 'sonar-scanner'
+    }
+    stages {
+        stage('Tooling Check') {
+            steps {
+                sh '''
+                echo "=== WHOAMI ==="
+                whoami
+                id
+                echo "=== BINARIES ==="
+                which git || true
+                git --version || true
+                which node || true
+                node -v || true
+                which npm || true
+                npm -v || true
+                which docker || true
+                docker --version || true
+                which trivy || true
+                trivy --version || true
+                echo "=== DOCKER PERMS ==="
+                docker ps || true
+                '''
+            }
+        }
+        stage('clean workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+        stage('Checkout from Git'){
+            steps{
+                git branch: 'main', url: 'https://github.com/Thunter534/studio.git'
+            }
+        }
+        stage('Install Dependencies') {
+            steps {
+                sh "npm install"
+            }
+        }
+        stage("Sonarqube Analysis "){
+            steps{
+                withSonarQubeEnv('sonar-server') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=athena \
+                    -Dsonar.projectKey=athena '''
+                }
+            }
+        }
+        stage("quality gate"){
+           steps {
+                script {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+                }
+            }
+        }
+        stage('OWASP FS SCAN') {
+            steps {
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                    dependencyCheck additionalArguments: "--scan ./ --disableYarnAudit --disableNodeAudit --nvdApiKey $NVD_API_KEY", odcInstallation: 'DP-Check'
+                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                }
+            }
+        }
+        stage('TRIVY FS SCAN') {
+            steps {
+                sh "trivy fs . > trivyfs.txt"
+            }
+        }
+        stage("Docker Build & Push"){
+            steps{
+                script{
+                   withDockerRegistry(credentialsId: 'docker', url: 'https://index.docker.io/v1/'){
+                       sh "docker build -t athena ."
+                       sh "docker tag athena astridloic/athena:${BUILD_NUMBER} "
+                       sh "docker push astridloic/athena:${BUILD_NUMBER} "
+                    }
+                }
+            }
+        }
+        stage("TRIVY"){
+            steps{
+                sh "trivy image astridloic/athena:${BUILD_NUMBER} > trivy.txt"
+            }
+        }
+        stage("store the file in ECR"){
+            steps{
+                withAWS(credentials: 'aws-key', region: 'us-east-1') {
+                    sh "
+                }
+        }
+    }
+}
