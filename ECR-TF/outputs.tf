@@ -17,17 +17,15 @@ output "ecs_service_name" {
   description = "ECS service name"
   value       = aws_ecs_service.athena_ecs_service.name
 }
-/*
 output "rds_endpoint" {
   description = "RDS endpoint address"
-  value       = aws_db_instance.athena_db_instance.address
+  value       = aws_db_instance.athena_intance.address
 }
 
 output "rds_port" {
   description = "RDS port"
-  value       = aws_db_instance.athena_db_instance.port
+  value       = aws_db_instance.athena_intance.port
 }
-*/
 output "db_secret_arn" {
   description = "Secrets Manager ARN for database credentials"
   value       = aws_secretsmanager_secret.db_secret.arn
