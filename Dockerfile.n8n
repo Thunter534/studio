@@ -1,0 +1,18 @@
+# Dockerfile for n8n workflow automation
+
+FROM docker.n8n.io/n8nio/n8n:latest
+
+# The official n8n image is minimal and doesn't include apk/apt.
+# Keep this image lean and use it as-is unless you build from a different base.
+
+# Create working directory and set permissions
+WORKDIR /data
+RUN chown -R node:node /data
+
+# Switch to node user (n8n should run as node)
+USER node
+
+# n8n web UI and webhook port
+EXPOSE 5678
+
+# Use default entrypoint and command from base image
