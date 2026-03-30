@@ -223,3 +223,8 @@ resource "aws_iam_role_policy_attachment" "iam-policy" {
   role = aws_iam_role.iam-role.name
   policy_arn = aws_iam_policy.jenkins_custom_policy.arn
 }
+
+resource "aws_iam_role_policy_attachment" "ssm_managed_core" {
+  role       = aws_iam_role.iam-role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
