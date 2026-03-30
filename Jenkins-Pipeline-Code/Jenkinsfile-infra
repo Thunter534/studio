@@ -4,32 +4,18 @@ pipeline{
         jdk 'jdk'
         nodejs 'nodejs'
     }
+    parameters {
+        string(name: 'ZAP_TARGET_URL', defaultValue: 'http://example.com', description: 'Target URL for OWASP ZAP baseline scan')
+    }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
+        AWS_DEFAULT_REGION = 'us-east-1'
+        AWS_ECS_CLUSTER = 'Athena-ecs-cluster'
+        AWS_ECS_SERVICE = 'Athena-ecs-service'
+        AWS_ECR_REPO = 'athena-repo'
+        AWS_ECS_TD = 'athena-task'
     }
     stages {
-        stage('Tooling Check') {
-            steps {
-                sh '''
-                echo "=== WHOAMI ==="
-                whoami
-                id
-                echo "=== BINARIES ==="
-                which git || true
-                git --version || true
-                which node || true
-                node -v || true
-                which npm || true
-                npm -v || true
-                which docker || true
-                docker --version || true
-                which trivy || true
-                trivy --version || true
-                echo "=== DOCKER PERMS ==="
-                docker ps || true
-                '''
-            }
-        }
         stage('clean workspace'){
             steps{
                 cleanWs()
@@ -42,7 +28,9 @@ pipeline{
         }
         stage('Install Dependencies') {
             steps {
-                sh "npm install"
+                sh '''npm ci
+                      npm run build 
+                   '''
             }
         }
         stage("Sonarqube Analysis "){
@@ -55,9 +43,11 @@ pipeline{
         }
         stage("quality gate"){
            steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
-                }
+                timeout(time : 35, unit : 'MINUTES') {
+                    script {
+                        waitForQualityGate abortPipeline: true, credentialsId: 'sonar-token'
+                    }
+                } 
             }
         }
         stage('OWASP FS SCAN') {
@@ -76,24 +66,76 @@ pipeline{
         stage("Docker Build & Push"){
             steps{
                 script{
-                   withDockerRegistry(credentialsId: 'docker', url: 'https://index.docker.io/v1/'){
-                       sh "docker build -t athena ."
-                       sh "docker tag athena astridloic/athena:${BUILD_NUMBER} "
-                       sh "docker push astridloic/athena:${BUILD_NUMBER} "
+                    withAWS(credentials: 'aws-key', region: "${AWS_DEFAULT_REGION}") {
+                        sh '''
+                        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+                        ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+                        ECR_REPO_NAME="athena-repo"
+                        ECR_IMAGE="${ECR_REGISTRY}/${ECR_REPO_NAME}:${BUILD_NUMBER}"
+
+                        aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                        docker build -t athena:${BUILD_NUMBER} .
+                        docker tag athena:${BUILD_NUMBER} ${ECR_IMAGE}
+                        docker push ${ECR_IMAGE}
+                        '''
                     }
                 }
             }
         }
         stage("TRIVY"){
             steps{
-                sh "trivy image astridloic/athena:${BUILD_NUMBER} > trivy.txt"
+                withAWS(credentials: 'aws-key', region: "${AWS_DEFAULT_REGION}") {
+                    sh '''
+                    ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+                    ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+                    ECR_IMAGE="${ECR_REGISTRY}/${AWS_ECR_REPO}:${BUILD_NUMBER}"
+                    aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                    trivy image ${ECR_IMAGE} > trivy.txt
+                    '''
+                }
             }
         }
-        stage("store the file in ECR"){
-            steps{
-                withAWS(credentials: 'aws-key', region: 'us-east-1') {
-                    sh "
+        stage('Playwright E2E Test') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh '''
+                    if [ -f playwright.config.ts ] || [ -f playwright.config.js ]; then
+                      E2E_BASE_URL="${ZAP_TARGET_URL}" npx playwright test
+                    else
+                      echo "No Playwright config found. Skipping E2E stage."
+                    fi
+                    '''
                 }
+            }
+        }
+        stage('OWASP ZAP Scan') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    sh '''
+                    if [ "${ZAP_TARGET_URL}" = "http://example.com" ]; then
+                      echo "ZAP_TARGET_URL still default. Skipping ZAP scan."
+                      exit 0
+                    fi
+                    docker run --rm -t owasp/zap2docker-stable zap-baseline.py -t ${ZAP_TARGET_URL} -r zap-report.html
+                    '''
+                }
+                archiveArtifacts artifacts: 'zap-report.html', allowEmptyArchive: true
+            }
+        }
+        stage('Manual Approval') {
+            steps {
+                input message: 'Approve deployment to ECS?', ok: 'Deploy'
+            }
+        }
+        stage('Push to ECS') {
+            steps {
+                withAWS(credentials: 'aws-key', region: "${AWS_DEFAULT_REGION}") {
+                    sh '''
+                    aws ecs update-service --cluster ${AWS_ECS_CLUSTER} --service ${AWS_ECS_SERVICE} --force-new-deployment --region ${AWS_DEFAULT_REGION}
+                    aws ecs wait services-stable --cluster ${AWS_ECS_CLUSTER} --services ${AWS_ECS_SERVICE} --region ${AWS_DEFAULT_REGION}
+                    '''
+                }
+            }
         }
     }
 }
