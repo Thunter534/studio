@@ -1,0 +1,13 @@
+variable "vpc-name" {}
+variable "igw-name" {}
+variable "rt-name" {}
+variable "subnet-name" {}
+variable "sg-name" {}
+variable "instance-name" {}
+variable "key-name" {}
+variable "iam-role" {}
+variable "region" {}
+variable "vpc_cidr_block" {}
+variable "vpc_public_subnet1_cidr_block" {}
+variable "route_table_ipv4_cidr_block" {}
+variable "availability_zone" {}
