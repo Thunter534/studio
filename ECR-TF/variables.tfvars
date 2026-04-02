@@ -18,7 +18,7 @@ app_bucket_name = "athena-app-storage-loic-001"
 s3_bucket_name  = "alb-logs-athena-loic-001"
 s3_tag_name     = "Athena-ALB-Logs"
 
-db_secret_name = "athena-db-secret-v3"
+db_secret_name = "athena-db-secret"
 
 db_subnet_group_name   = "athena-db-subnet-group"
 db_instance_identifier = "athena-db"
