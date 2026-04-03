@@ -23,8 +23,12 @@ resource "aws_ecs_task_definition" "n8n" {
     efs_volume_configuration {
       file_system_id     = aws_efs_file_system.n8n_efs.id
       transit_encryption = "ENABLED"
-
       root_directory = "/"
+
+      authorization_config {
+        access_point_id = aws_efs_access_point.n8n_access_point.id
+        iam             = "DISABLED"
+      }
     }
   }
 
