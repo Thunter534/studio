@@ -3,7 +3,7 @@ data "aws_region" "current" {}
 locals {
   cognito_redirect_uri = "http://localhost:${var.app_port}/auth/callback"
   cognito_logout_uri   = "http://localhost:${var.app_port}"
-  cognito_domain_url   = "https://${aws_cognito_user_pool_domain.athena_domain.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
+  cognito_domain_url   = "https://${aws_cognito_user_pool_domain.athena_domain.domain}.auth.${data.aws_region.current.region}.amazoncognito.com"
 }
 
 resource "local_file" "cognito_env" {
@@ -16,6 +16,6 @@ resource "local_file" "cognito_env" {
   NEXT_PUBLIC_COGNITO_REDIRECT_URI=${local.cognito_redirect_uri}
   NEXT_PUBLIC_COGNITO_LOGOUT_URI=${local.cognito_logout_uri}
   COGNITO_CLIENT_ID=${aws_cognito_user_pool_client.athena_client.id}
-  COGNITO_ISSUER=https://cognito-idp.${data.aws_region.current.name}.amazonaws.com/${aws_cognito_user_pool.athena_users.id}
+  COGNITO_ISSUER=https://cognito-idp.${data.aws_region.current.region}.amazonaws.com/${aws_cognito_user_pool.athena_users.id}
   EOT
 }

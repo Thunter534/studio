@@ -56,6 +56,14 @@ resource "aws_security_group" "n8n_ecs_sg" {
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }
+  
+   ingress {
+    description     = "TLS from VPC"
+    from_port       = var.db_port
+    to_port         = var.db_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app_ecs_sg.id]
+  }
 
   egress {
     from_port   = 0
@@ -84,8 +92,8 @@ resource "aws_security_group" "rds_sg" {
 
   ingress {
     description     = "Postgres from n8n ECS tasks"
-    from_port       = var.db_port
-    to_port         = var.db_port
+    from_port       = var.n8n_port
+    to_port         = var.n8n_port
     protocol        = "tcp"
     security_groups = [aws_security_group.n8n_ecs_sg.id]
   }

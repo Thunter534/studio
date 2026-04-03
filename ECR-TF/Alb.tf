@@ -19,11 +19,15 @@ resource "aws_lb" "alb" {
 }
 
 resource "aws_lb_target_group" "ecs_tg" {
-  name        = var.target_group_name
+  name_prefix = "athtg-"
   port        = var.app_port
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.vpc.id
   target_type = "ip"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 
   health_check {
     path                = "/"
@@ -48,11 +52,15 @@ resource "aws_lb_listener" "alb_listener" {
 }
 
 resource "aws_lb_target_group" "n8n_tg" {
-  name        = "athena-n8n-tg"
+  name_prefix = "n8ntg-"
   port        = var.n8n_port
   protocol    = "HTTP"
   vpc_id      = data.aws_vpc.vpc.id
   target_type = "ip"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 
   health_check {
     enabled             = true
@@ -78,6 +86,22 @@ resource "aws_lb_listener_rule" "n8n_http_rule" {
   condition {
     path_pattern {
       values = ["/n8n*", "/rest*"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "n8n_host_rule" {
+  listener_arn = aws_lb_listener.alb_listener.arn
+  priority     = 90
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.n8n_tg.arn
+  }
+
+  condition {
+    host_header {
+      values = [var.n8n_subdomain_name]
     }
   }
 }

@@ -4,26 +4,6 @@ resource "aws_cognito_user_pool" "athena_users" {
   username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
 
-  schema {
-    attribute_data_type = "String"
-    name                = "email"
-    required            = true
-    mutable             = true
-  }
-
-  schema {
-    attribute_data_type = "String"
-    name                = "name"
-    required            = true
-    mutable             = true
-  }
-
-  schema {
-    attribute_data_type = "String"
-    name                = "role"
-    mutable             = true
-  }
-
   password_policy {
     minimum_length    = 8
     require_lowercase = true
@@ -68,14 +48,12 @@ resource "aws_cognito_user_pool_client" "athena_client" {
   read_attributes = [
     "email",
     "name",
-    "profile",
-    "custom:role"
+    "profile"
   ]
 
   write_attributes = [
     "email",
-    "name",
-    "custom:role"
+    "name"
   ]
 }
 
