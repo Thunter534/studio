@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,12 @@ import { Switch } from '@/components/ui/switch';
 function ProfileTabContent() {
     const { user } = useAuth();
     const { toast } = useToast();
+    const [fullName, setFullName] = useState('');
+    const [school, setSchool] = useState('');
+
+    useEffect(() => {
+        setFullName(user?.name ?? '');
+    }, [user?.name]);
 
     return (
          <div className="space-y-6">
@@ -36,16 +42,27 @@ function ProfileTabContent() {
                     <div className="grid gap-6 sm:grid-cols-2">
                         <div className="space-y-2">
                             <Label htmlFor="fullName" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Full Name</Label>
-                            <Input id="fullName" defaultValue={user?.name} className="bg-secondary/20 h-11" />
+                            <Input
+                                id="fullName"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="bg-secondary/20 h-11"
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="school" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">School / Organization</Label>
-                            <Input id="school" placeholder="e.g. Springfield Elementary" className="bg-secondary/20 h-11" />
+                            <Input
+                                id="school"
+                                placeholder="e.g. Springfield Elementary"
+                                value={school}
+                                onChange={(e) => setSchool(e.target.value)}
+                                className="bg-secondary/20 h-11"
+                            />
                         </div>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Work Email</Label>
-                        <Input id="email" readOnly defaultValue={user?.email} className="bg-secondary/50 text-muted-foreground h-11" />
+                        <Input id="email" readOnly value={user?.email ?? ''} className="bg-secondary/50 text-muted-foreground h-11" />
                     </div>
                 </CardContent>
                 <CardFooter className="border-t border-border/50 pt-6">

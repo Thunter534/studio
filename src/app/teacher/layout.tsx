@@ -17,6 +17,7 @@ import {
 import { LoadingSpinner } from '@/components/loading-spinner';
 import { SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { isTeacherSideRole } from '@/lib/auth';
 
 const mainNavLinks = [
   { href: '/teacher/dashboard', icon: Home, label: 'Home' },
@@ -36,12 +37,12 @@ export default function TeacherLayout({
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && (!isAuthenticated || user?.role !== 'teacher')) {
+    if (!isLoading && (!isAuthenticated || !isTeacherSideRole(user?.role))) {
       router.replace('/');
     }
   }, [isLoading, isAuthenticated, user, router]);
 
-  if (isLoading || !isAuthenticated || user?.role !== 'teacher') {
+  if (isLoading || !isAuthenticated || !isTeacherSideRole(user?.role)) {
     return <LoadingSpinner fullScreen />;
   }
 

@@ -123,7 +123,7 @@ The webhook gateway (`src/app/api/webhook/route.ts`) now:
 
 **Test one webhook:**
 ```bash
-curl -X POST http://localhost:9002/api/webhook \
+curl -X POST http://localhost:3000/api/webhook \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer test-token" \
   -d '{

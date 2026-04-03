@@ -18,7 +18,7 @@ app_bucket_name = "athena-app-storage-loic-001"
 s3_bucket_name  = "alb-logs-athena-loic-001"
 s3_tag_name     = "Athena-ALB-Logs"
 
-db_secret_name = "athena-db-secret-v2"
+db_secret_name = "athena-db-secret"
 
 db_subnet_group_name   = "athena-db-subnet-group"
 db_instance_identifier = "athena-db"
@@ -34,7 +34,7 @@ db_port                = 5432
 app_ecs_sg_name         = "Athena-ecs-sg"
 rds_sg_name         = "Athena-rds-sg"
 alb_sg_name         = "Athena-alb-sg"
-security-group-name = "Jenkins-sg"
+security-group-name = "Athena-sg"
 
 vpc_name = "Athena-vpc"
 igw_name = "Athena-igw"
@@ -78,3 +78,4 @@ subdomain_name   = "athena.test-master.click"
 
 cognito_user_pool_client_name = "athena-user-pool-client"
 cognito_user_pool_name        = "athena-user-pool"
+cognito_domain_prefix         = "athena-auth-test-master"

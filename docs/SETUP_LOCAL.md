@@ -52,7 +52,7 @@ This method uses the Next.js development server and provides features like hot-r
 npm run dev
 ```
 
-The application will be available at [http://localhost:9002](http://localhost:9002).
+The application will be available at [http://localhost:3000](http://localhost:3000).
 
 ### B) Using Docker Compose
 
@@ -65,7 +65,7 @@ This method runs the application inside a Docker container, which is closer to t
     docker-compose up --build
     ```
 
-The application will also be available at [http://localhost:9002](http://localhost:9002). The `docker-compose.yml` file is configured to use the development server and hot-reloading.
+The application will also be available at [http://localhost:3000](http://localhost:3000). The `docker-compose.yml` file is configured to use the development server and hot-reloading.
 
 ## 5. Running the Backend (n8n)
 

@@ -12,5 +12,9 @@ terraform {
       version = ">= 2.7.0"
       source  = "hashicorp/aws"
     }
+    local = {
+      version = ">= 2.5.0"
+      source  = "hashicorp/local"
+    }
   }
 }

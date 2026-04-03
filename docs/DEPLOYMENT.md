@@ -19,10 +19,10 @@ docker build -t classpulse-frontend:latest .
 After the build is complete, you can run it locally to test the production container:
 
 ```bash
-docker run -p 9002:9002 --env-file .env.local classpulse-frontend:latest
+docker run -p 3000:3000 --env-file .env.local classpulse-frontend:latest
 ```
 
-This will start the production server on port 9002.
+This will start the production server on port 3000.
 
 ## AWS Deployment (High-Level Notes)
 
@@ -50,7 +50,7 @@ AWS Fargate is a serverless compute engine for containers. It's recommended for 
     - In ECS, create a new Task Definition for Fargate.
     - **Container Definition:**
       - Point to the ECR image URI you just pushed.
-      - **Port Mappings:** Map container port `9002` to the host.
+      - **Port Mappings:** Map container port `3000` to the host.
       - **Environment Variables:** This is the most critical step for configuration. You should not hardcode secrets. Use AWS Secrets Manager or Parameter Store integration with ECS to inject environment variables securely.
         - `N8N_WEBHOOK_URL`
         - `NEXT_PUBLIC_APP_URL`
@@ -64,10 +64,10 @@ AWS Fargate is a serverless compute engine for containers. It's recommended for 
     - **Networking:**
       - Deploy the service into a VPC with public and private subnets.
       - Place the Fargate tasks in private subnets.
-      - **Security Groups:** Configure a security group that allows inbound traffic on port `9002` from the Application Load Balancer.
+      - **Security Groups:** Configure a security group that allows inbound traffic on port `3000` from the Application Load Balancer.
     - **Load Balancing:**
       - Create an Application Load Balancer (ALB).
-      - Create a target group that points to the Fargate tasks on port `9002`.
+      - Create a target group that points to the Fargate tasks on port `3000`.
       - Create a listener on the ALB for HTTPS (port 443) that forwards traffic to your target group. Use AWS Certificate Manager (ACM) to provision an SSL certificate.
 
 4.  **Configure DNS:**

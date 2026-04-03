@@ -6,6 +6,7 @@ import type { EventName, WebhookRequest, WebhookResponse } from './events';
 import { useToast } from '@/hooks/use-toast';
 import { devLogger } from './logger';
 import { activityTracker } from './activity-tracker';
+import { normalizeWebhookActorRole } from './auth';
 
 interface UseWebhookOptions<P> {
   eventName: EventName;
@@ -131,7 +132,7 @@ export function useWebhook<P, R>({
       requestId: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       actor: {
-        role: user.role,
+        role: normalizeWebhookActorRole(user.role),
         userId: user.id,
         ...(includeActorUserName && userName ? { userName } : {}),
       },

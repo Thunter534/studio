@@ -17,17 +17,30 @@ output "ecs_service_name" {
   description = "ECS service name"
   value       = aws_ecs_service.athena_ecs_service.name
 }
-/*
+
+output "cognito_user_pool_id" {
+  description = "Cognito user pool ID"
+  value       = aws_cognito_user_pool.athena_users.id
+}
+
+output "cognito_user_pool_client_id" {
+  description = "Cognito user pool client ID"
+  value       = aws_cognito_user_pool_client.athena_client.id
+}
+
+output "cognito_domain" {
+  description = "Cognito hosted domain"
+  value       = aws_cognito_user_pool_domain.athena_domain.domain
+}
 output "rds_endpoint" {
   description = "RDS endpoint address"
-  value       = aws_db_instance.athena_db_instance.address
+  value       = aws_db_instance.athena_intance.address
 }
 
 output "rds_port" {
   description = "RDS port"
-  value       = aws_db_instance.athena_db_instance.port
+  value       = aws_db_instance.athena_intance.port
 }
-*/
 output "db_secret_arn" {
   description = "Secrets Manager ARN for database credentials"
   value       = aws_secretsmanager_secret.db_secret.arn

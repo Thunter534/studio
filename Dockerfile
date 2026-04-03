@@ -5,6 +5,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
+RUN npm audit fix --force
 
 # 2. Build application
 FROM node:20-alpine AS builder
@@ -37,7 +38,7 @@ COPY --from=builder /app/package.json ./package.json
 
 USER nextjs
 
-EXPOSE 9002
+EXPOSE 3000
 
 # Set the correct port for the start command
-CMD ["npm", "start", "--", "-p", "9002"]
+CMD ["npm", "start", "--", "-p", "3000"]

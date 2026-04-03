@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { UserNav } from './user-nav';
 import { Logo } from './logo';
+import { getDefaultDashboardPath } from '@/lib/auth';
 import {
   SidebarProvider,
   Sidebar,
@@ -171,7 +172,7 @@ export function MainLayout({
 
   if (!user) return null;
 
-  const dashboardLink = user.role === 'teacher' ? '/teacher/dashboard' : '/parent/dashboard';
+  const dashboardLink = getDefaultDashboardPath(user.role);
 
   return (
     <SidebarProvider defaultOpen={false}>

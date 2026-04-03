@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Check, Loader2, Moon, Sun } from 'lucide-react';
 import type { UserRole } from '@/lib/auth';
 import Image from 'next/image';
@@ -102,8 +100,12 @@ export default function AthenaLandingPage() {
     e.preventDefault();
     setIsLoading(true);
     setIsError(false);
-    login(role);
-    setIsLoading(false);
+    try {
+      await login(role);
+    } catch {
+      setIsError(true);
+      setIsLoading(false);
+    }
   };
 
   const toggleRole = (newRole: UserRole) => {
@@ -251,40 +253,13 @@ export default function AthenaLandingPage() {
                       </div>
 
                       <form onSubmit={handleLogin} className="space-y-5 flex-1 flex flex-col">
-                        <div className="space-y-4">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="email" className="text-foreground font-bold text-[10px] uppercase tracking-wider">Email</Label>
-                            <Input 
-                              id="email" 
-                              name="email"
-                              type="email" 
-                              required
-                              placeholder={role === 'teacher' ? "teacher@school.edu" : "parent@email.com"}
-                              className={cn(
-                                "h-12 rounded-xl bg-background border-border focus:border-primary focus:ring-primary transition-all px-4 text-sm dark:text-white",
-                                isError && "border-destructive focus:border-destructive focus:ring-destructive"
-                              )} 
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="password" className="text-foreground font-bold text-[10px] uppercase tracking-wider">Password</Label>
-                            <Input 
-                              id="password" 
-                              name="password"
-                              type="password" 
-                              required
-                              placeholder="••••••••" 
-                              className={cn(
-                                "h-12 rounded-xl bg-background border-border focus:border-primary focus:ring-primary transition-all px-4 text-sm dark:text-white",
-                                isError && "border-destructive focus:border-destructive focus:ring-destructive"
-                              )} 
-                            />
-                          </div>
-                        </div>
+                        <p className="text-sm text-muted-foreground text-center leading-relaxed">
+                          Continue to AWS Cognito secure sign-in to access your {role === 'teacher' ? 'teacher' : 'parent'} workspace.
+                        </p>
 
                         {isError && (
                           <p className="text-xs font-medium text-destructive text-center">
-                            Invalid credentials. Please try again.
+                            Could not start secure sign-in. Please check Cognito configuration.
                           </p>
                         )}
 
@@ -293,27 +268,8 @@ export default function AthenaLandingPage() {
                           disabled={isLoading}
                           className="w-full bg-primary hover:opacity-90 h-12 text-base font-bold rounded-xl transition-all shadow-sm mt-2"
                         >
-                          {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "Sign In"}
+                          {isLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "Continue To Secure Sign In"}
                         </Button>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => login('teacher')}
-                            className="h-10 rounded-xl font-bold text-xs"
-                          >
-                            Dev Login Teacher
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => login('parent')}
-                            className="h-10 rounded-xl font-bold text-xs"
-                          >
-                            Dev Login Parent
-                          </Button>
-                        </div>
 
                         <div className="text-center mt-auto">
                           <button type="button" className="text-xs font-semibold text-primary hover:underline">
