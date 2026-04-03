@@ -1,6 +1,6 @@
 alb_name          = "Athena-alb"
 target_group_name = "Athena-target-group"
-app_port          = 3000
+app_port          = 9002
 
 aws_region = "us-east-1"
 
@@ -78,3 +78,4 @@ subdomain_name   = "athena.test-master.click"
 
 cognito_user_pool_client_name = "athena-user-pool-client"
 cognito_user_pool_name        = "athena-user-pool"
+cognito_domain_prefix         = "athena-auth-test-master"

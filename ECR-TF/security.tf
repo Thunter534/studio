@@ -83,6 +83,14 @@ resource "aws_security_group" "rds_sg" {
   }
 
   ingress {
+    description     = "Postgres from n8n ECS tasks"
+    from_port       = var.db_port
+    to_port         = var.db_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.n8n_ecs_sg.id]
+  }
+
+  ingress {
     description     = "Postgres from bastion/Jenkins host"
     from_port       = var.db_port
     to_port         = var.db_port

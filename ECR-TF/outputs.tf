@@ -17,6 +17,21 @@ output "ecs_service_name" {
   description = "ECS service name"
   value       = aws_ecs_service.athena_ecs_service.name
 }
+
+output "cognito_user_pool_id" {
+  description = "Cognito user pool ID"
+  value       = aws_cognito_user_pool.athena_users.id
+}
+
+output "cognito_user_pool_client_id" {
+  description = "Cognito user pool client ID"
+  value       = aws_cognito_user_pool_client.athena_client.id
+}
+
+output "cognito_domain" {
+  description = "Cognito hosted domain"
+  value       = aws_cognito_user_pool_domain.athena_domain.domain
+}
 output "rds_endpoint" {
   description = "RDS endpoint address"
   value       = aws_db_instance.athena_intance.address
