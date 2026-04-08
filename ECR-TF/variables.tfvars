@@ -73,9 +73,9 @@ n8n_memory         = "1024"
 n8n_service_name   = "athena-n8n-service"
 n8n_ecs_sg_name = "Athena-n8n-ecs-sg"
 
-root_domain_name = "cloudmasterastrid.com"
-subdomain_name   = "athena.cloudmasterastrid.com"
-n8n_subdomain_name = "n8n.cloudmasterastrid.com"
+root_domain_name = "test-master.click"
+subdomain_name   = "athena.test-master.click"
+n8n_subdomain_name = "n8n.test-master.click"
 
 cognito_user_pool_client_name = "athena-user-pool-client"
 cognito_user_pool_name        = "athena-user-pool"
