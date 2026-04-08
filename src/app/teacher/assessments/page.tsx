@@ -107,7 +107,7 @@ type RawAssignmentItem = {
   notes?: string | null;
 };
 
-const DELETE_ASSIGNMENT_WEBHOOK_URL = 'http://0.0.0.0:5678/webhook/ded55702-b005-431b-a943-a362583ce040';
+const DELETE_ASSIGNMENT_WEBHOOK_URL = 'https://n8n.srv1336679.hstgr.cloud/webhook/ded55702-b005-431b-a943-a362583ce040';
 
 const resolveRubricName = (rubricName?: string, globalRubricName?: string): string => {
   if (rubricName) {
