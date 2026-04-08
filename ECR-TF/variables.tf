@@ -76,6 +76,7 @@ variable "n8n_port" {
 
 variable "root_domain_name" {}
 variable "subdomain_name" {}
+variable "n8n_subdomain_name" {}
 
 variable "cognito_user_pool_name" {}
 variable "cognito_user_pool_client_name" {}

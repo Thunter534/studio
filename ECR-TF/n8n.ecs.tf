@@ -23,8 +23,12 @@ resource "aws_ecs_task_definition" "n8n" {
     efs_volume_configuration {
       file_system_id     = aws_efs_file_system.n8n_efs.id
       transit_encryption = "ENABLED"
-
       root_directory = "/"
+
+      authorization_config {
+        access_point_id = aws_efs_access_point.n8n_access_point.id
+        iam             = "DISABLED"
+      }
     }
   }
 
@@ -64,31 +68,8 @@ resource "aws_ecs_task_definition" "n8n" {
           value = "http"
         },
         {
-          name  = "DB_TYPE"
-          value = "postgresdb"
-        },
-        {
-          name  = "DB_POSTGRESDB_HOST"
-          value = "${aws_db_instance.athena_intance.address}"
-        }
-      ]
-
-      secrets = [
-        {
-          name      = "DB_POSTGRESDB_USER"
-          valueFrom = "${aws_secretsmanager_secret.db_secret.arn}:username::"
-        },
-        {
-          name      = "DB_POSTGRESDB_PASSWORD"
-          valueFrom = "${aws_secretsmanager_secret.db_secret.arn}:password::"
-        },
-        {
-          name      = "DB_POSTGRESDB_DATABASE"
-          valueFrom = "${aws_secretsmanager_secret.db_secret.arn}:dbname::"
-        },
-        {
-          name      = "DB_POSTGRESDB_PORT"
-          valueFrom = "${aws_secretsmanager_secret.db_secret.arn}:port::"
+          name = "N8N_SECURE_COOKIE"
+          value = "false"
         }
       ]
 
@@ -117,8 +98,7 @@ resource "aws_ecs_service" "n8n_service" {
 
   network_configuration {
     subnets = [
-      aws_subnet.private1_subnet1.id,
-      aws_subnet.private2_subnet1.id
+      aws_subnet.private1_subnet1.id
     ]
     security_groups  = [aws_security_group.n8n_ecs_sg.id]
     assign_public_ip = false
@@ -131,6 +111,7 @@ resource "aws_ecs_service" "n8n_service" {
   }
 
   depends_on = [
+    aws_lb_listener_rule.n8n_host_rule,
     aws_lb_listener_rule.n8n_http_rule,
     aws_efs_mount_target.n8n_mount_target_1,
     aws_efs_mount_target.n8n_mount_target_2

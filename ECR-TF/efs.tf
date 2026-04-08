@@ -9,6 +9,25 @@ resource "aws_efs_file_system" "n8n_efs" {
   }
 }
 
+resource "aws_efs_access_point" "n8n_access_point" {
+  file_system_id = aws_efs_file_system.n8n_efs.id
+
+  posix_user {
+    uid = 1000
+    gid = 1000
+  }
+
+  root_directory {
+    path = "/n8n"
+
+    creation_info {
+      owner_uid   = 1000
+      owner_gid   = 1000
+      permissions = "755"
+    }
+  }
+}
+
 resource "aws_efs_mount_target" "n8n_mount_target_1" {
   file_system_id  = aws_efs_file_system.n8n_efs.id
   subnet_id       = aws_subnet.private1_subnet1.id
