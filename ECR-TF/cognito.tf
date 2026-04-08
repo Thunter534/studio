@@ -17,6 +17,10 @@ resource "aws_cognito_user_pool" "athena_users" {
   }
 }
 
+locals {
+  cognito_app_base_url = startswith(var.subdomain_name, "http://") || startswith(var.subdomain_name, "https://") ? trimsuffix(var.subdomain_name, "/") : "https://${var.subdomain_name}"
+}
+
 resource "aws_cognito_user_pool_client" "athena_client" {
   name         = var.cognito_user_pool_client_name
   user_pool_id = aws_cognito_user_pool.athena_users.id
@@ -35,14 +39,12 @@ resource "aws_cognito_user_pool_client" "athena_client" {
   supported_identity_providers = ["COGNITO"]
 
   callback_urls = [
-    "http://localhost:${var.app_port}/auth/callback",
-    "https://${var.subdomain_name}/auth/callback"
+    "${local.cognito_app_base_url}/auth/callback"
   ]
-  default_redirect_uri = "http://localhost:${var.app_port}/auth/callback"
+  default_redirect_uri = "${local.cognito_app_base_url}/auth/callback"
 
   logout_urls = [
-    "http://localhost:${var.app_port}",
-    "https://${var.subdomain_name}"
+    local.cognito_app_base_url
   ]
 
   read_attributes = [
