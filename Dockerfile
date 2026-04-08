@@ -13,9 +13,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Create .env.local from env.example template
-RUN cp env.example .env.local
-
 RUN npm run build
 
 # 3. Production image
