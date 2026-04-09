@@ -22,16 +22,16 @@ resource "aws_security_group" "app_ecs_sg" {
     prefix_list_ids  = []
     security_groups  = [aws_security_group.alb_sg.id]
   }
-  /*
+
   ingress {
-    description     = "Optional admin/test access from Jenkins"
-    from_port       = var.app_port
-    to_port         = var.app_port
+    description     = "ecs_group to n8n ECS tasks"
+    from_port       = var.n8n_port
+    to_port         = var.n8n_port
     protocol        = "tcp"
-    security_groups = [data.aws_security_group.jenkins_sg.id]
+    security_groups = [aws_security_group.n8n_ecs_sg.id]
   }
 
-*/
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -57,14 +57,7 @@ resource "aws_security_group" "n8n_ecs_sg" {
     security_groups = [aws_security_group.alb_sg.id]
   }
   
-   ingress {
-    description     = "TLS from VPC"
-    from_port       = var.db_port
-    to_port         = var.db_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.app_ecs_sg.id]
-  }
-
+  
   egress {
     from_port   = 0
     to_port     = 0

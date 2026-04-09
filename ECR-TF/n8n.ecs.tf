@@ -65,11 +65,12 @@ resource "aws_ecs_task_definition" "n8n" {
         },
         {
           name  = "N8N_PROTOCOL"
-          value = "http"
+          value = "https"
         },
+
         {
-          name = "N8N_SECURE_COOKIE"
-          value = "false"
+          name = "N8N_SSL_KEY"
+          value = tostring(var.n8n_port)
         }
       ]
 

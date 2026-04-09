@@ -140,7 +140,7 @@ resource "aws_lb_listener_rule" "n8n_http_rule" {
 }
 
 resource "aws_lb_listener_rule" "n8n_host_rule" {
-  listener_arn = aws_lb_listener.alb_listener.arn
+  listener_arn = aws_lb_listener.alb_https_listener.arn
   priority     = 90
 
   action {

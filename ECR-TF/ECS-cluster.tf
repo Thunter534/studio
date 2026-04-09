@@ -79,6 +79,14 @@ resource "aws_ecs_task_definition" "app" {
         {
           name  = "DB_HOST"
           value = "${aws_db_instance.athena_intance.address}"
+        },
+        {
+          name  = "COGNITO_CLIENT_ID"
+          value = aws_cognito_user_pool_client.athena_client.id
+        },
+        {
+          name  = "COGNITO_ISSUER"
+          value = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.athena_users.id}"
         }
       ]
     }
