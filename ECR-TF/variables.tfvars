@@ -18,20 +18,25 @@ app_bucket_name = "athena-app-storage-loic-001"
 s3_bucket_name  = "alb-logs-athena-loic-001"
 s3_tag_name     = "Athena-ALB-Logs"
 
-db_secret_name = "athena-db-secret"
+db_secret_name     = "athena-db-secret"
+n8n_db_secret_name = "athena-n8n-db-secret"
 
-db_subnet_group_name   = "athena-db-subnet-group"
-db_instance_identifier = "athena-db"
-db_allocated_storage   = 20
-db_engine              = "postgres"
-db_engine_version      = "16.3"
-db_instance_class      = "db.t3.micro"
-db_name                = "athenadb"
-db_username            = "athena_admin"
-db_password            = "ChangeMe123!"
-db_port                = 5432
+db_subnet_group_name       = "athena-db-subnet-group"
+db_instance_identifier     = "athena-db"
+db_allocated_storage       = 20
+db_engine                  = "postgres"
+db_engine_version          = "16.3"
+db_instance_class          = "db.t3.micro"
+db_name                    = "athenadb"
+db_username                = "athena_admin"
+db_password                = "ChangeMe123!"
+db_port                    = 5432
+n8n_db_instance_identifier = "athena-n8n-db"
+n8n_db_name                = "n8ndb"
+n8n_db_username            = "n8n_admin"
+n8n_db_password            = "N8nChangeMe123!"
 
-app_ecs_sg_name         = "Athena-ecs-sg"
+app_ecs_sg_name     = "Athena-ecs-sg"
 rds_sg_name         = "Athena-rds-sg"
 alb_sg_name         = "Athena-alb-sg"
 security-group-name = "Athena-sg"
@@ -71,10 +76,10 @@ n8n_port           = 5678
 n8n_cpu            = "512"
 n8n_memory         = "1024"
 n8n_service_name   = "athena-n8n-service"
-n8n_ecs_sg_name = "Athena-n8n-ecs-sg"
+n8n_ecs_sg_name    = "Athena-n8n-ecs-sg"
 
-root_domain_name = "test-master.click"
-subdomain_name   = "athena.test-master.click"
+root_domain_name   = "test-master.click"
+subdomain_name     = "athena.test-master.click"
 n8n_subdomain_name = "n8n.test-master.click"
 
 cognito_user_pool_client_name = "athena-user-pool-client"

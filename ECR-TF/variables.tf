@@ -19,6 +19,7 @@ variable "s3_bucket_name" {}
 variable "s3_tag_name" {}
 
 variable "db_secret_name" {}
+variable "n8n_db_secret_name" {}
 
 variable "db_subnet_group_name" {}
 variable "db_instance_identifier" {}
@@ -30,6 +31,10 @@ variable "db_name" {}
 variable "db_username" {}
 variable "db_password" {}
 variable "db_port" {}
+variable "n8n_db_instance_identifier" {}
+variable "n8n_db_name" {}
+variable "n8n_db_username" {}
+variable "n8n_db_password" {}
 
 variable "app_ecs_sg_name" {}
 variable "rds_sg_name" {}
