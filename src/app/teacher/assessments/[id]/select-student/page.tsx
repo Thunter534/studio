@@ -1,6 +1,6 @@
 'use client';
-
-import React, { useEffect, useState } from 'react';
+ 
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, ChevronRight } from 'lucide-react';
 import { getWebhookUrl } from '@/lib/webhook-config';
 import { useAuth } from '@/hooks/use-auth';
-
+ 
 const STUDENT_LIST_CACHE_KEY = 'n8n:student-list';
-
+ 
 type StudentItem = {
   name: string;
   studentIdNumber: string;
@@ -21,7 +21,7 @@ type StudentItem = {
   studentEmail?: string;
   parentEmail?: string;
 };
-
+ 
 function StudentListSkeleton() {
   return (
     <div className="w-full">
@@ -49,7 +49,7 @@ function StudentListSkeleton() {
     </div>
   );
 }
-
+ 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="w-full">
@@ -67,19 +67,22 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
     </div>
   );
 }
-
+ 
 export default function SelectStudentPage() {
   const router = useRouter();
   const params = useParams();
   const assessmentId = params?.id as string;
   const { user, isLoading: isAuthLoading } = useAuth();
-  const actor = user ? { role: user.role, userId: user.id, userName: user.name } : undefined;
-
+  const actor = useMemo(
+    () => (user ? { role: user.role, userId: user.id, userName: user.name } : undefined),
+    [user?.id, user?.role, user?.name]
+  );
+ 
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const readStudentsCache = () => {
+ 
+  const readStudentsCache = useCallback(() => {
     if (typeof window === 'undefined') {
       return null;
     }
@@ -93,9 +96,9 @@ export default function SelectStudentPage() {
       window.localStorage.removeItem(STUDENT_LIST_CACHE_KEY);
       return null;
     }
-  };
-
-  const writeStudentsCache = (data: StudentItem[]) => {
+  }, []);
+ 
+  const writeStudentsCache = useCallback((data: StudentItem[]) => {
     if (typeof window === 'undefined') {
       return;
     }
@@ -103,27 +106,27 @@ export default function SelectStudentPage() {
       STUDENT_LIST_CACHE_KEY,
       JSON.stringify({ timestamp: Date.now(), data })
     );
-  };
-
-  const fetchStudents = async () => {
+  }, []);
+ 
+  const fetchStudents = useCallback(async () => {
     if (isAuthLoading) {
       return;
     }
-
+ 
     if (!user) {
       setIsLoading(false);
       return;
     }
-
+ 
     setIsLoading(true);
     setError(null);
-
+ 
     try {
       const webhookUrl = getWebhookUrl('STUDENT_LIST');
       if (!webhookUrl) {
         throw new Error('Student list webhook URL is not configured');
       }
-      
+     
       const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
@@ -134,13 +137,13 @@ export default function SelectStudentPage() {
           ...(actor ? { actor } : {}),
         }),
       });
-
+ 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-
+ 
       const result = await response.json();
-
+ 
       if (Array.isArray(result)) {
         const mappedStudents = result.map((student: any) => ({
           name: student.name,
@@ -175,28 +178,36 @@ export default function SelectStudentPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
+  }, [isAuthLoading, user, actor, readStudentsCache, writeStudentsCache]);
+ 
   useEffect(() => {
     fetchStudents();
-  }, [user, actor, isAuthLoading]);
-
+  }, [fetchStudents]);
+ 
   const handleStudentClick = (student: StudentItem) => {
+    if (!assessmentId) {
+      setError('Assessment ID is missing from the route.');
+      return;
+    }
+ 
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('currentStudentId', student.studentIdNumber);
       sessionStorage.setItem('currentStudentName', student.name);
     }
-    router.push(`/teacher/assessments/${assessmentId}/setup?studentId=${student.studentIdNumber}`);
+ 
+    const routeAssessmentId = encodeURIComponent(String(assessmentId));
+    const query = new URLSearchParams({ studentId: String(student.studentIdNumber) }).toString();
+    router.push(`/teacher/assessments/${routeAssessmentId}/setup?${query}`);
   };
-
+ 
   if (isLoading) {
     return <StudentListSkeleton />;
   }
-
+ 
   if (error) {
     return <ErrorState onRetry={fetchStudents} />;
   }
-
+ 
   if (students.length === 0) {
     return (
       <div className="w-full">
@@ -213,14 +224,14 @@ export default function SelectStudentPage() {
       </div>
     );
   }
-
+ 
   return (
     <div className="w-full">
       <PageHeader
         title="Select Student"
         description="Choose a student to assess."
       />
-
+ 
       <Card>
         <CardHeader>
           <CardTitle>All Students</CardTitle>
@@ -243,7 +254,18 @@ export default function SelectStudentPage() {
                 >
                   <TableCell className="font-medium">{student.name}</TableCell>
                   <TableCell>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Open ${student.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleStudentClick(student);
+                      }}
+                    >
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

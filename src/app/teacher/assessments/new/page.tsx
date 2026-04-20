@@ -1,5 +1,5 @@
 'use client';
-
+ 
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,11 +11,12 @@ import { useWebhook } from "@/lib/hooks";
 import type { RubricListItem } from "@/lib/events";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
-
+ 
 export default function NewAssessmentPage() {
     const router = useRouter();
     const { toast } = useToast();
-
+    const toTrimmedString = (value: unknown): string => String(value ?? '').trim();
+ 
     const { data: rubricsData, isLoading: rubricsLoading, trigger: refreshRubrics, isLoading: isRefreshingRubrics } = useWebhook<{}, { rubrics: RubricListItem[] } | RubricListItem[]>({
         eventName: 'RUBRIC_LIST',
         payload: {},
@@ -24,16 +25,16 @@ export default function NewAssessmentPage() {
         forceRefreshOnMount: true,
         fallbackToCacheOnError: true,
     });
-
+ 
     const rubrics = Array.isArray(rubricsData) ? rubricsData : rubricsData?.rubrics ?? [];
     const globalRubric = rubrics[0];
-
-
+ 
+ 
     const handleSuccess = useCallback((data: { assessmentId: string }) => {
         toast({ title: "Draft Created", description: "Your new assessment has been saved as a draft." });
         router.push('/teacher/assessments');
     }, [router, toast]);
-
+ 
     // We use the `manual` option here, so the webhook is only called on form submission.
     const { trigger: createAssessment, isLoading: isCreating } = useWebhook<{
         title: string;
@@ -50,22 +51,22 @@ export default function NewAssessmentPage() {
         allowEmptyResponse: true,
         allowEchoResponse: true,
     });
-
+ 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
-        const title = formData.get('title') as string;
-        const notes = formData.get('notes') as string;
-        const rubricName = globalRubric?.name?.trim();
-        const rubricId = globalRubric?.id?.trim();
-
+        const title = toTrimmedString(formData.get('title'));
+        const notes = toTrimmedString(formData.get('notes'));
+        const rubricName = toTrimmedString(globalRubric?.name);
+        const rubricId = toTrimmedString(globalRubric?.id);
+ 
         if (!title || !rubricName) {
             toast({ variant: 'destructive', title: "Missing fields", description: "Please provide a title. A global rubric must also be configured." });
             return;
         }
-
+ 
         const resolvedRubricId = rubricId || rubricName;
-
+ 
         await createAssessment({
             title,
             notes: notes || undefined,
@@ -76,7 +77,7 @@ export default function NewAssessmentPage() {
             rubric_id: resolvedRubricId,
         });
     };
-
+ 
     return (
     <div>
       <PageHeader
@@ -88,7 +89,7 @@ export default function NewAssessmentPage() {
                     </Button>
                 }
       />
-
+ 
         <form onSubmit={handleSubmit}>
             <Card>
                 <CardHeader>
@@ -126,3 +127,5 @@ export default function NewAssessmentPage() {
     </div>
   );
 }
+ 
+ 

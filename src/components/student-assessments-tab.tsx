@@ -1,5 +1,5 @@
 'use client';
-
+ 
 import { useEffect, useMemo, useState } from "react";
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,9 @@ import { AlertCircle } from "lucide-react";
 import { useWebhook } from "@/lib/hooks";
 import type { StudentAssessmentListItem } from "@/lib/events";
 import { normalizeAssessmentIdentifier } from "@/lib/utils";
-
+import { useAuth } from "@/hooks/use-auth";
+import { normalizeWebhookActorRole } from "@/lib/auth";
+ 
 type Assignment = {
   id: string;
   title: string;
@@ -20,20 +22,20 @@ type Assignment = {
   notes?: string;
     status?: StudentSubmissionStatus;
 };
-
+ 
 type StudentSubmissionStatus = 'N/A' | 'Graded';
-
+ 
 const STUDENT_ASSESSMENT_STATUS_WEBHOOK_URL = process.env.NEXT_PUBLIC_N8N_STUDENT_ASSESSMENT_STATUS_URL;
-
+ 
 type WebhookStatusRecord = {
     assessmentName: string;
     status: StudentSubmissionStatus;
 };
-
+ 
 const normalizeAssessmentName = (value: string): string => value.trim().toLowerCase();
-
-
-
+ 
+ 
+ 
 const normalizeStatus = (value: string | undefined): StudentSubmissionStatus => {
     if (!value) {
         return 'N/A';
@@ -44,21 +46,24 @@ const normalizeStatus = (value: string | undefined): StudentSubmissionStatus => 
     }
     return 'N/A';
 };
-
+ 
 const normalizeAssignment = (item: any, index: number): Assignment | null => {
-    const rawId = item.id ?? item.assessment_id ?? item.assessmentId ?? item.assignment_id ?? item.assignmentId;
     const title = item.title ?? item.name ?? `Untitled Assignment ${index + 1}`;
-    const id = rawId || title.toString().trim();
-
+    const rawIdentifier = item.title ?? item.name ?? item.assessment_name ?? item.assignment_name;
+ 
+    if (rawIdentifier === undefined || rawIdentifier === null || String(rawIdentifier).trim() === '') {
+        return null;
+    }
+ 
     return {
-        id,
+        id: String(rawIdentifier).trim(),
         title,
         rubricName: item.rubricName ?? item.rubric_name ?? item.rubricId ?? item.rubric_id,
         notes: item.notes ?? item.note,
         status: normalizeStatus(item.status ?? item.assessmentStatus ?? item.assessment_status),
     };
 };
-
+ 
 function AssessmentsTableSkeleton() {
     return (
         <Card>
@@ -85,7 +90,7 @@ function AssessmentsTableSkeleton() {
         </Card>
     );
 }
-
+ 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
     return (
         <Alert variant="destructive" className="mt-2">
@@ -100,12 +105,13 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         </Alert>
     );
 }
-
+ 
 export function StudentAssessmentsTab({ studentId, studentName }: { studentId: string; studentName?: string }) {
     const router = useRouter();
+    const { user, token } = useAuth();
     const [statusByAssessmentName, setStatusByAssessmentName] = useState<Record<string, StudentSubmissionStatus>>({});
     const [globalRubricName, setGlobalRubricName] = useState<string>('No global rubric configured');
-
+ 
     const { data, isLoading, error, trigger: refetch } = useWebhook<
         { studentId: string },
         { assessments: StudentAssessmentListItem[] }
@@ -115,39 +121,62 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
         cacheKey: `assessments:${studentId}`,
         cacheTtlMs: 60_000,
     });
-
+ 
     useEffect(() => {
         const fetchStatuses = async () => {
             if (!studentName) {
                 setStatusByAssessmentName({});
                 return;
             }
-
+ 
             if (!STUDENT_ASSESSMENT_STATUS_WEBHOOK_URL) {
                 console.warn('[StudentAssessmentsTab] Missing NEXT_PUBLIC_N8N_STUDENT_ASSESSMENT_STATUS_URL');
                 setStatusByAssessmentName({});
                 return;
             }
-
+ 
             try {
+                const actorUserName = user?.name ?? studentName ?? studentId;
+                const actorUserId = user?.id ?? studentId;
+                const actorRole = user?.role ? normalizeWebhookActorRole(user.role) : 'teacher';
+                const requestBody = {
+                    eventName: 'STUDENT_ASSESSMENT_STATUS_LIST',
+                    requestId: crypto.randomUUID(),
+                    timestamp: new Date().toISOString(),
+                    actor: {
+                        role: actorRole,
+                        userId: actorUserId,
+                        userName: actorUserName,
+                    },
+                    payload: {
+                        student_id: studentId,
+                        studentId: studentId,
+                        student_name: studentName,
+                        studentName,
+                        name: studentName,
+                        user: actorUserName,
+                    },
+                    // Keep top-level aliases for compatibility with existing workflows.
+                    student_id: studentId,
+                    studentId: studentId,
+                    student_name: studentName,
+                    studentName,
+                    name: studentName,
+                };
+ 
                 const response = await fetch(STUDENT_ASSESSMENT_STATUS_WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
                     },
-                    body: JSON.stringify({
-                        student_name: studentName,
-                        studentName,
-                        student_id: studentName,
-                        studentId: studentName,
-                        name: studentName,
-                    }),
+                    body: JSON.stringify(requestBody),
                 });
-
+ 
                 if (!response.ok) {
                     throw new Error(`Status webhook error: ${response.status}`);
                 }
-
+ 
                 const payload = await response.json();
                 const items = Array.isArray(payload)
                     ? payload
@@ -156,12 +185,12 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
                       ?? payload?.items
                       ?? payload?.assessments
                       ?? [];
-
+ 
                 if (!Array.isArray(items)) {
                     setStatusByAssessmentName({});
                     return;
                 }
-
+ 
                 const mapped = items.reduce<Record<string, StudentSubmissionStatus>>((acc, item: any) => {
                     const assessmentName = String(
                         item?.assessment_id
@@ -173,36 +202,36 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
                         ?? item?.id
                         ?? ''
                     ).trim();
-
+ 
                     if (!assessmentName) {
                         return acc;
                     }
-
+ 
                     const normalizedStatus = normalizeStatus(item?.status);
                     acc[normalizeAssessmentName(assessmentName)] = normalizedStatus;
                     return acc;
                 }, {});
-
+ 
                 setStatusByAssessmentName(mapped);
             } catch (fetchError) {
                 console.error('[StudentAssessmentsTab] Failed to fetch status map:', fetchError);
                 setStatusByAssessmentName({});
             }
         };
-
+ 
         fetchStatuses();
-    }, [studentId, studentName]);
-
+    }, [studentId, studentName, user, token]);
+ 
     useEffect(() => {
         if (typeof window === 'undefined') {
             return;
         }
-
+ 
         const rawValue = window.sessionStorage.getItem('rubrics:list');
         if (!rawValue) {
             return;
         }
-
+ 
         try {
             const cached = JSON.parse(rawValue) as { data?: Array<{ name?: string }> | { rubrics?: Array<{ name?: string }> } };
             const rubrics = Array.isArray(cached?.data)
@@ -216,7 +245,7 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
             window.sessionStorage.removeItem('rubrics:list');
         }
     }, []);
-
+ 
     const assignments = useMemo(() => {
         const rawItems = Array.isArray(data)
             ? data
@@ -235,7 +264,7 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
                 };
             });
     }, [data, statusByAssessmentName]);
-
+ 
     const getStatusVariant = (status: StudentSubmissionStatus): 'default' | 'secondary' | 'destructive' | 'outline' => {
         switch (status) {
             case 'Graded': return 'default';
@@ -243,12 +272,12 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
             default: return 'secondary';
         }
     };
-
+ 
     const getStatusLabel = (status: StudentSubmissionStatus): string => {
         return status;
     };
-
-
+ 
+ 
     const handleRowClick = (assignment: Assignment) => {
         // Persist assignment metadata for downstream pages.
         if (typeof window !== 'undefined') {
@@ -256,18 +285,20 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
             sessionStorage.setItem('currentRubricName', assignment.rubricName || globalRubricName);
             sessionStorage.setItem('currentAssignmentTitle', assignment.title);
         }
-
-        router.push(`/teacher/assessments/${assignment.id}/setup?studentId=${studentId}`);
+ 
+        const routeAssessmentId = encodeURIComponent(String(assignment.id));
+        const query = new URLSearchParams({ studentId: String(studentId) }).toString();
+        router.push(`/teacher/assessments/${routeAssessmentId}/setup?${query}`);
     };
-
+ 
     if (isLoading) {
         return <AssessmentsTableSkeleton />;
     }
-
+ 
     if (error) {
         return <ErrorState onRetry={refetch} />;
     }
-
+ 
     if (assignments.length === 0) {
         return (
             <div className="text-center py-16 border-dashed border-2 rounded-lg mt-2">
@@ -276,7 +307,7 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
             </div>
         );
     }
-
+ 
     return (
         <Card className="mt-2">
             <CardContent className="p-0">
@@ -315,3 +346,5 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
         </Card>
     );
 }
+ 
+ 

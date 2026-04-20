@@ -1,5 +1,5 @@
 'use client';
-
+ 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,16 +15,16 @@ import type { StudentListItem, StudentListResponse } from '@/lib/events';
 import { User, FileText, ShieldCheck, ArrowLeft, CheckCircle2, Sparkles, MessageSquare } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-
+ 
 type GradeScaleValue = 'A' | 'B' | '1' | '2' | '3' | '4' | '5' | '6';
-
+ 
 const FIXED_REPORT_CRITERIA: Array<{ id: string; title: string; description?: string; maxPoints: number }> = [
   { id: 'listening', title: 'Listening', maxPoints: 8 },
   { id: 'speaking', title: 'Speaking', maxPoints: 8 },
   { id: 'reading', title: 'Reading', maxPoints: 8 },
   { id: 'writing', title: 'Writing', maxPoints: 8 },
 ];
-
+ 
 const toGradeNumericValue = (value: GradeScaleValue): number => {
   switch (value) {
     case 'A': return 1;
@@ -38,7 +38,7 @@ const toGradeNumericValue = (value: GradeScaleValue): number => {
     default: return 5;
   }
 };
-
+ 
 const toGradeScaleValue = (value: unknown): GradeScaleValue => {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
@@ -60,14 +60,14 @@ const toGradeScaleValue = (value: unknown): GradeScaleValue => {
     default: return '3';
   }
 };
-
+ 
 export default function GradingPage() {
   const params = useParams<{ id: string }>();
   const assessmentId = params.id;
   const normalizedAssessmentId = normalizeAssessmentIdentifier(assessmentId) ?? assessmentId;
   const { toast } = useToast();
   const router = useRouter();
-
+ 
   const { data: assessmentData, isLoading } = useWebhook<{ assessmentId: string }, { assessment: any }>({
     eventName: 'ASSESSMENT_GET',
     payload: { assessmentId: normalizedAssessmentId },
@@ -75,17 +75,17 @@ export default function GradingPage() {
     cacheTtlMs: 60_000,
     fallbackToCacheOnError: true,
   });
-
+ 
   const { data: studentsData } = useWebhook<{}, StudentListResponse | StudentListItem[] | { students?: any[] }>({
     eventName: 'STUDENT_LIST',
     allowRawResponse: true,
   });
-
+ 
   const normalizedStudents = useMemo<StudentListItem[]>(() => {
     if (!studentsData) {
       return [];
     }
-
+ 
     const mapStudent = (student: any): StudentListItem => ({
       name: student?.name,
       grade: student?.grade,
@@ -93,23 +93,23 @@ export default function GradingPage() {
       studentEmail: student?.student_email ?? student?.studentEmail,
       parentEmail: student?.parent_email ?? student?.parentEmail ?? '',
     });
-
+ 
     if (Array.isArray(studentsData)) {
       return studentsData.map(mapStudent).filter((student) => student.name && student.studentIdNumber);
     }
-
+ 
     const responseLike = studentsData as any;
     if (Array.isArray(responseLike.students)) {
       return responseLike.students.map(mapStudent).filter((student: StudentListItem) => student.name && student.studentIdNumber);
     }
-
+ 
     if (responseLike.success && Array.isArray(responseLike.data?.students)) {
       return responseLike.data.students.map(mapStudent).filter((student: StudentListItem) => student.name && student.studentIdNumber);
     }
-
+ 
     return [];
   }, [studentsData]);
-
+ 
   const resolvedAssessment = useMemo(() => {
     if (!assessmentData) {
       return null;
@@ -120,7 +120,7 @@ export default function GradingPage() {
     const candidate = assessmentData as any;
     return candidate.assessment ?? candidate.data?.assessment ?? candidate ?? null;
   }, [assessmentData]);
-
+ 
   const { trigger: finalizeAssessment, isLoading: isFinalizing } = useWebhook<{
     assessment_id: string;
     student_id?: string | null;
@@ -148,7 +148,7 @@ export default function GradingPage() {
       manual: true,
     }
   );
-
+ 
   const { trigger: markComplete, isLoading: isMarkingComplete } = useWebhook<{
     student_id: string;
     assessment_id: string;
@@ -159,7 +159,7 @@ export default function GradingPage() {
       manual: true,
     }
   );
-
+ 
   const [scores, setScores] = useState<Record<string, GradeScaleValue>>({});
   const [teacherFeedback, setTeacherFeedback] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -167,9 +167,9 @@ export default function GradingPage() {
   const [selectedAssignmentTitle, setSelectedAssignmentTitle] = useState<string | null>(null);
   const [sessionAiOutput, setSessionAiOutput] = useState<string | null>(null);
   const [rubricNameFromSession, setRubricNameFromSession] = useState<string | null>(null);
-
+ 
   const criteria = useMemo(() => FIXED_REPORT_CRITERIA, []);
-
+ 
   const aiOutputText = useMemo(() => {
     const rawOutput = resolvedAssessment?.aiReview?.finalFeedback
       ?? resolvedAssessment?.aiReview?.feedback
@@ -182,24 +182,44 @@ export default function GradingPage() {
       ?? resolvedAssessment?.aiResponse
       ?? resolvedAssessment?.aiResult
       ?? resolvedAssessment?.ai;
-
+ 
     if (!rawOutput) {
       return sessionAiOutput || 'No AI output yet.';
     }
-
+ 
     const extractTextFromParts = (parts: any[]): string => {
       return parts
-        .map((part) => (typeof part?.text === 'string' ? part.text : ''))
+        .map((part) => {
+          if (typeof part?.text === 'string') {
+            return part.text;
+          }
+          if (typeof part?.content?.text === 'string') {
+            return part.content.text;
+          }
+          if (typeof part?.content === 'string') {
+            return part.content;
+          }
+          return '';
+        })
         .filter(Boolean)
         .join('\n');
     };
-
+ 
     if (typeof rawOutput === 'string') {
       return rawOutput;
     }
-
+ 
     if (Array.isArray(rawOutput)) {
       const first = rawOutput[0];
+      if (typeof first?.content?.text === 'string') {
+        return first.content.text;
+      }
+      if (Array.isArray(first?.content)) {
+        const extracted = extractTextFromParts(first.content);
+        if (extracted) {
+          return extracted;
+        }
+      }
       const parts = first?.content?.parts ?? first?.parts;
       if (Array.isArray(parts)) {
         const extracted = extractTextFromParts(parts);
@@ -209,7 +229,18 @@ export default function GradingPage() {
       }
       return JSON.stringify(rawOutput, null, 2);
     }
-
+ 
+    if (typeof rawOutput?.content?.text === 'string') {
+      return rawOutput.content.text;
+    }
+ 
+    if (Array.isArray(rawOutput?.content)) {
+      const extracted = extractTextFromParts(rawOutput.content);
+      if (extracted) {
+        return extracted;
+      }
+    }
+ 
     const parts = rawOutput?.content?.parts ?? rawOutput?.parts;
     if (Array.isArray(parts)) {
       const extracted = extractTextFromParts(parts);
@@ -217,14 +248,14 @@ export default function GradingPage() {
         return extracted;
       }
     }
-
+ 
     if (typeof rawOutput?.text === 'string') {
       return rawOutput.text;
     }
-
+ 
     return JSON.stringify(rawOutput, null, 2);
   }, [resolvedAssessment, sessionAiOutput]);
-
+ 
   const resolvedStudentGrade = useMemo(() => {
     const assessmentGrade = resolvedAssessment?.student?.grade
       ?? resolvedAssessment?.student?.gradeLabel
@@ -233,23 +264,23 @@ export default function GradingPage() {
       ?? resolvedAssessment?.gradeLabel
       ?? resolvedAssessment?.grade
       ?? null;
-
+ 
     if (assessmentGrade) {
       return String(assessmentGrade);
     }
-
+ 
     const students = normalizedStudents;
     if (!students.length) {
       return null;
     }
-
+ 
     const assessmentStudentId = resolvedAssessment?.student?.studentIdNumber
       ?? resolvedAssessment?.student?.id
       ?? null;
     const assessmentStudentName = resolvedAssessment?.student?.name ?? null;
-
+ 
     const normalizeMatchValue = (value: unknown): string => String(value ?? '').trim().toLowerCase();
-
+ 
     const candidateIds = new Set(
       [
         selectedStudentId,
@@ -258,7 +289,7 @@ export default function GradingPage() {
         .map(normalizeMatchValue)
         .filter(Boolean),
     );
-
+ 
     const candidateNames = new Set(
       [
         selectedStudentName,
@@ -267,7 +298,7 @@ export default function GradingPage() {
         .map(normalizeMatchValue)
         .filter(Boolean),
     );
-
+ 
     const matchedStudent = students.find((student) => {
       const rawStudent = student as any;
       const studentIdCandidates = [
@@ -279,7 +310,7 @@ export default function GradingPage() {
       ]
         .map(normalizeMatchValue)
         .filter(Boolean);
-
+ 
       const studentNameCandidates = [
         rawStudent.name,
         rawStudent.student_name,
@@ -288,26 +319,26 @@ export default function GradingPage() {
       ]
         .map(normalizeMatchValue)
         .filter(Boolean);
-
+ 
       return (
         studentIdCandidates.some((id) => candidateIds.has(id))
         || studentNameCandidates.some((name) => candidateNames.has(name))
       );
     });
-
+ 
     return matchedStudent?.grade ?? null;
   }, [resolvedAssessment, selectedStudentId, selectedStudentName, normalizedStudents]);
-
+ 
   const allowedGradeScaleOptions = useMemo(
     () => getAllowedProficiencyLevelsForGrade(resolvedStudentGrade) as GradeScaleValue[],
     [resolvedStudentGrade],
   );
-
+ 
   const displayedLimiterGrade = useMemo(
     () => normalizeStudentGrade(resolvedStudentGrade),
     [resolvedStudentGrade],
   );
-
+ 
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -336,7 +367,7 @@ export default function GradingPage() {
       setSelectedAssignmentTitle(storedAssignmentTitle);
     }
   }, [normalizedAssessmentId]);
-
+ 
   useEffect(() => {
     if (!criteria.length) {
       return;
@@ -350,7 +381,7 @@ export default function GradingPage() {
     });
     setScores(initial);
   }, [criteria, resolvedStudentGrade]);
-
+ 
   useEffect(() => {
     // Populate scores from AI review when assessment data loads
     const rubricGrades = resolvedAssessment?.aiReview?.rubricGrades
@@ -375,11 +406,11 @@ export default function GradingPage() {
     });
     setScores((prev) => ({ ...prev, ...newScores }));
   }, [resolvedAssessment, criteria, resolvedStudentGrade]);
-
+ 
   const handleScoreChange = (id: string, value: GradeScaleValue) => {
     setScores((s) => ({ ...s, [id]: value }));
   };
-
+ 
   const handleFinalize = async () => {
     const rubricGrades = criteria.map((criterion) => {
       const rawScore = scores[criterion.id] ?? '4';
@@ -411,7 +442,7 @@ export default function GradingPage() {
     const studentName = resolvedAssessment?.student?.name ?? selectedStudentName ?? null;
     const aiOutput = aiOutputText && aiOutputText !== 'No AI output yet.' ? aiOutputText : null;
     const feedbackValue = teacherFeedback.trim() ? teacherFeedback.trim() : null;
-
+ 
     const finalizeResponse = await finalizeAssessment({
       assessment_id: normalizedAssessmentId,
       student_id: studentId,
@@ -424,7 +455,7 @@ export default function GradingPage() {
       rubric_grades: rubricGrades,
       criteria_ratings: criteriaRatings,
     });
-
+ 
     // Mark the assignment as complete for the student
     if (studentName && assignmentTitle) {
       await markComplete({
@@ -433,7 +464,7 @@ export default function GradingPage() {
         status: 'Graded',
       });
     }
-
+ 
     if (typeof window !== 'undefined') {
       if (studentId) {
         sessionStorage.setItem('currentStudentId', studentId);
@@ -445,46 +476,46 @@ export default function GradingPage() {
         sessionStorage.setItem('currentAssignmentTitle', assignmentTitle);
       }
     }
-
+ 
     const reportId = (finalizeResponse as any)?.data?.reportId
       ?? (finalizeResponse as any)?.reportId
       ?? (finalizeResponse as any)?.data?.report?.reportId
       ?? (finalizeResponse as any)?.report?.reportId
       ?? (finalizeResponse as any)?.data?.assessment?.reportId
       ?? (finalizeResponse as any)?.assessment?.reportId;
-
+ 
     if (typeof window !== 'undefined' && reportId && studentId) {
       const cacheKey = `report:${studentId}:${normalizedAssessmentId}`;
       window.sessionStorage.setItem(cacheKey, reportId);
     }
-
+ 
     toast({ title: 'Finalized', description: 'Assessment finalized.' });
     setTimeout(() => router.push(reportId ? `/teacher/reports/${reportId}` : '/teacher/reports'), 600);
   };
-
+ 
   const studentDisplayName = resolvedAssessment?.student?.name
     ?? resolvedAssessment?.student?.studentIdNumber
     ?? selectedStudentName
     ?? selectedStudentId
     ?? 'Unknown Student';
-
+ 
   const assignmentDisplayName = normalizedAssessmentId
     ?? resolvedAssessment?.title
     ?? selectedAssignmentTitle
     ?? 'Untitled Assignment';
-
+ 
   return (
     <div className="w-full space-y-8 pb-20">
       {/* Premium Context Header */}
       <div className="space-y-4">
-        <button 
+        <button
           onClick={() => router.back()}
           className="group flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:text-primary transition-all tracking-[0.2em] uppercase"
         >
           <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
           <span>Return to Workspace</span>
         </button>
-
+ 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between bg-white dark:bg-[#111827] p-6 rounded-[2rem] border border-border shadow-sm">
           <div className="flex flex-wrap items-center gap-8">
             <div className="flex items-center gap-3">
@@ -496,9 +527,9 @@ export default function GradingPage() {
                 <p className="text-sm font-bold text-foreground truncate max-w-[180px]">{studentDisplayName}</p>
               </div>
             </div>
-
+ 
             <Separator orientation="vertical" className="hidden lg:block h-10 bg-border" />
-
+ 
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center border border-border">
                 <FileText className="h-5 w-5 text-primary" />
@@ -508,9 +539,9 @@ export default function GradingPage() {
                 <p className="text-sm font-bold text-foreground truncate max-w-[220px]">{assignmentDisplayName}</p>
               </div>
             </div>
-
+ 
             <Separator orientation="vertical" className="hidden lg:block h-10 bg-border" />
-
+ 
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
                 <ShieldCheck className="h-5 w-5 text-primary" />
@@ -528,9 +559,9 @@ export default function GradingPage() {
               </div>
             </div>
           </div>
-
-          <Button 
-            onClick={handleFinalize} 
+ 
+          <Button
+            onClick={handleFinalize}
             disabled={isFinalizing || isMarkingComplete || isLoading}
             className="bg-primary hover:opacity-90 h-12 px-8 font-bold rounded-xl transition-all shadow-md shadow-primary/20"
           >
@@ -539,7 +570,7 @@ export default function GradingPage() {
           </Button>
         </div>
       </div>
-
+ 
       {/* Main Action Workspace */}
       <div className="grid gap-8 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-7 border-border shadow-sm overflow-hidden rounded-[2rem] bg-card">
@@ -581,9 +612,9 @@ export default function GradingPage() {
                 </div>
               ))}
             </div>
-
+ 
             <Separator className="bg-border/50" />
-
+ 
             {/* Final Feedback: Prominent & Most Important */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2 mb-1">
@@ -592,20 +623,20 @@ export default function GradingPage() {
                 </div>
                 <Label htmlFor="teacher-feedback" className="text-[11px] font-bold uppercase tracking-widest text-primary">Final Teacher Narrative</Label>
               </div>
-              
+             
               <div className="relative group">
-                <Textarea 
-                  id="teacher-feedback" 
+                <Textarea
+                  id="teacher-feedback"
                   placeholder="The most important part! Share encouraging remarks and areas for growth with the student and parents..."
                   className="min-h-[220px] rounded-2xl bg-secondary/20 border-border focus:border-primary/50 transition-all text-sm leading-relaxed p-6 shadow-inner ring-offset-background placeholder:italic"
-                  value={teacherFeedback} 
-                  onChange={(e) => setTeacherFeedback(e.target.value)} 
+                  value={teacherFeedback}
+                  onChange={(e) => setTeacherFeedback(e.target.value)}
                 />
                 <div className="absolute top-4 right-4 opacity-30 group-hover:opacity-100 transition-opacity">
                   <Badge variant="outline" className="bg-background text-[9px] font-bold uppercase">Narrative Feedback</Badge>
                 </div>
               </div>
-              
+             
               <div className="flex justify-end">
                 <Button variant="ghost" size="sm" onClick={() => setTeacherFeedback('')} className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider hover:text-foreground">
                   Clear Narrative
@@ -614,7 +645,7 @@ export default function GradingPage() {
             </div>
           </CardContent>
         </Card>
-
+ 
         {/* AI Insight Sidebar */}
         <div className="lg:col-span-5 space-y-8">
           <Card className="border-border shadow-sm overflow-hidden rounded-[2rem] bg-white dark:bg-[#111827]">
@@ -649,3 +680,5 @@ export default function GradingPage() {
     </div>
   );
 }
+ 
+ 
