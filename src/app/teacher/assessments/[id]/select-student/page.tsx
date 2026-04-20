@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, ChevronRight } from 'lucide-react';
 import { getWebhookUrl } from '@/lib/webhook-config';
 import { useAuth } from '@/hooks/use-auth';
+import Link from 'next/link';
  
 const STUDENT_LIST_CACHE_KEY = 'n8n:student-list';
  
@@ -59,8 +60,11 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         <AlertTitle>Failed to Load Students</AlertTitle>
         <AlertDescription>
           There was an issue fetching the student list. Please try again.
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="destructive" onClick={onRetry}>Retry</Button>
+            <Button variant="outline" asChild>
+              <Link href="/teacher/students">Go to Student Roster</Link>
+            </Button>
           </div>
         </AlertDescription>
       </Alert>
@@ -216,9 +220,14 @@ export default function SelectStudentPage() {
           <CardContent className="pt-6 text-center py-16 border-dashed border-2 rounded-lg">
             <h3 className="text-xl font-semibold">No students available</h3>
             <p className="text-muted-foreground mt-2">There are no students in the system.</p>
-            <Button className="mt-4" variant="outline" onClick={() => router.back()}>
-              Back to Assignments
-            </Button>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <Button variant="outline" asChild>
+                <Link href="/teacher/students">Add Student</Link>
+              </Button>
+              <Button variant="outline" onClick={() => router.back()}>
+                Back to Assignments
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

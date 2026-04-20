@@ -332,6 +332,14 @@ export default function SetupPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {!loadingStudents && students.length === 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                  <span>No students found yet.</span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/teacher/students">Add Student</Link>
+                  </Button>
+                </div>
+              )}
             </div>
  
             <div>

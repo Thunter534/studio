@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { getWebhookUrl } from '@/lib/webhook-config';
 import { useAuth } from '@/hooks/use-auth';
+import Link from 'next/link';
 
 const STUDENT_DETAIL_CACHE_KEY_PREFIX = 'n8n:student-detail:';
 
@@ -62,16 +63,30 @@ function ProfilePageSkeleton() {
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
     return (
-        <Alert variant="destructive" className="max-w-2xl mx-auto">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Failed to Load Student Profile</AlertTitle>
-            <AlertDescription>
-                There was a problem fetching the student's data. Please try again.
-                <div className="mt-4">
-                    <Button variant="destructive" onClick={onRetry}>Retry</Button>
-                </div>
-            </AlertDescription>
-        </Alert>
+    <div className="space-y-6">
+      <PageHeader
+        title="Student Profile"
+        description="Unable to load this student."
+        actions={
+          <Button asChild>
+            <Link href="/teacher/students">Add Student</Link>
+          </Button>
+        }
+      />
+      <Alert variant="destructive" className="max-w-2xl mx-auto">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Failed to Load Student Profile</AlertTitle>
+        <AlertDescription>
+          There was a problem fetching the student's data. Please try again.
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="destructive" onClick={onRetry}>Retry</Button>
+            <Button variant="outline" asChild>
+              <Link href="/teacher/students">Go to Student Roster</Link>
+            </Button>
+          </div>
+        </AlertDescription>
+      </Alert>
+    </div>
     );
 }
 
@@ -203,9 +218,30 @@ export default function StudentDetailPage() {
   }
 
   if (!student) {
-    return <div>
-        <p>Student not found.</p>
-    </div>;
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Student Not Found"
+          description="This student record is missing or unavailable."
+          actions={
+            <Button asChild>
+              <Link href="/teacher/students">Add Student</Link>
+            </Button>
+          }
+        />
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-muted-foreground">Select a student from the roster or add a new student to continue.</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button variant="outline" asChild>
+                <Link href="/teacher/students">Open Student Roster</Link>
+              </Button>
+              <Button variant="outline" onClick={fetchStudent}>Retry</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

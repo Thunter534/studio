@@ -126,6 +126,14 @@ export default function StudentsPage() {
                 studentEmail: student.student_email ?? student.studentEmail,
                 parentEmail: student.parent_email ?? student.parentEmail,
             }));
+        } else if (Array.isArray((data as any)?.students)) {
+            baseList = (data as any).students.map((student: any) => ({
+                name: student.name,
+                studentIdNumber: student.student_id ?? student.studentIdNumber,
+                grade: student.grade,
+                studentEmail: student.student_email ?? student.studentEmail,
+                parentEmail: student.parent_email ?? student.parentEmail,
+            }));
         }
 
         const filteredList = displaySearch 
@@ -172,8 +180,22 @@ export default function StudentsPage() {
                 <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4 opacity-20" />
                 <p className="text-destructive font-bold text-lg">Synchronization Offline</p>
                 <p className="text-muted-foreground mb-6">{error?.message || 'Failed to load students'}</p>
-                <Button onClick={() => refetch()} variant="outline" className="font-bold">Retry Sync</Button>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                    <Button onClick={() => refetch()} variant="outline" className="font-bold">Retry Sync</Button>
+                    <Button onClick={() => setIsDrawerOpen(true)} className="font-bold">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Student
+                    </Button>
+                </div>
             </div>
+            <AddStudentDrawer
+                isOpen={isDrawerOpen}
+                onOpenChange={setIsDrawerOpen}
+                onSuccess={() => {
+                    setIsDrawerOpen(false);
+                    refetch();
+                }}
+            />
         </div>
     );
 
