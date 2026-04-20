@@ -1,5 +1,5 @@
 'use client';
-
+ 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { PageHeader } from "@/components/page-header";
@@ -11,11 +11,11 @@ import { ArrowLeft, GraduationCap, MessageSquare, FileCheck2, User, Calendar, Lo
 import { useWebhook } from "@/lib/hooks";
 import { Separator } from '@/components/ui/separator';
 import dynamic from 'next/dynamic';
-
+ 
 // Dynamically import the wrapper to prevent SSR issues and React 19 reconciliation errors with react-pdf
 const ReportDownloadButton = dynamic(
   () => import('@/components/reports/report-download-button'),
-  { 
+  {
     ssr: false,
     loading: () => (
       <Button variant="outline" disabled className="h-11 rounded-xl font-bold border-border bg-card shadow-sm">
@@ -25,7 +25,7 @@ const ReportDownloadButton = dynamic(
     )
   }
 );
-
+ 
 const formatProficiencyLevel = (score: number): string => {
   const rounded = Math.max(1, Math.min(8, Math.round(Number(score))));
   switch (rounded) {
@@ -40,7 +40,7 @@ const formatProficiencyLevel = (score: number): string => {
     default: return '3';
   }
 };
-
+ 
 const normalizeLegacyRubricScore = (score: number, maxScore?: number): number => {
     const rawScore = Number(score);
     const rawMaxScore = Number(maxScore);
@@ -49,57 +49,85 @@ const normalizeLegacyRubricScore = (score: number, maxScore?: number): number =>
     }
     return rawScore;
 };
-
+ 
 interface FinalizedReport {
   id?: string;
   student_name: string;
   assignment_title: string;
   rubric_name: string;
   teacher_feedback?: string;
-  rubric_grades?: Array<{
-    score: number;
-    maxScore: number;
-    criterionId: string;
-    criterionName: string;
-  }>;
+    rubric_grades?: Array<{
+        score: number;
+        maxScore: number;
+        criterionId: string;
+        criterionName: string;
+    }>;
   created_at?: string;
   Timestamp?: string;
   timestamp?: string;
 }
-
+ 
 export default function ReportDetailPage() {
     const params = useParams();
     const router = useRouter();
     const reportId = params.id as string;
     const [isClient, setIsClient] = useState(false);
-
+    const [storedReportMeta, setStoredReportMeta] = useState<{ student_name?: string; assignment_title?: string } | null>(null);
+ 
     useEffect(() => {
         setIsClient(true);
     }, []);
-    
+ 
+    useEffect(() => {
+        if (typeof window === 'undefined' || !reportId) {
+            return;
+        }
+ 
+        const rawMeta = window.sessionStorage.getItem(`report:meta:${reportId}`);
+        if (!rawMeta) {
+            setStoredReportMeta(null);
+            return;
+        }
+ 
+        try {
+            const parsed = JSON.parse(rawMeta) as { student_name?: string; assignment_title?: string };
+            setStoredReportMeta({
+                student_name: typeof parsed?.student_name === 'string' ? parsed.student_name : undefined,
+                assignment_title: typeof parsed?.assignment_title === 'string' ? parsed.assignment_title : undefined,
+            });
+        } catch {
+            setStoredReportMeta(null);
+            window.sessionStorage.removeItem(`report:meta:${reportId}`);
+        }
+    }, [reportId]);
+   
     const { data: reportsList } = useWebhook<{}, any>({
         eventName: 'REPORTS_LIST',
         payload: {},
         suppressErrorToast: true,
     });
-    
+   
     const reportInfo = React.useMemo(() => {
         const reports = Array.isArray(reportsList)
             ? reportsList
             : (reportsList?.reports ?? reportsList?.items ?? []);
-
+ 
         const matchingReport = reports.find((r: any, idx: number) => {
             const id = r.id ?? r.reportId ?? r.report_id ?? `report-${idx}`;
             return id === reportId;
         });
-
+ 
         return {
             reportId,
-            student_name: matchingReport?.student_name ?? matchingReport?.studentName,
-            assignment_title: matchingReport?.assignment_title ?? matchingReport?.assignmentTitle ?? matchingReport?.assessment_title,
+            student_name: matchingReport?.student_name ?? matchingReport?.studentName ?? storedReportMeta?.student_name,
+            assignment_title:
+                matchingReport?.assignment_title
+                ?? matchingReport?.assignmentTitle
+                ?? matchingReport?.assessment_title
+                ?? storedReportMeta?.assignment_title,
         };
-    }, [reportId, reportsList]);
-
+    }, [reportId, reportsList, storedReportMeta]);
+ 
     const { data: reportRaw, isLoading, trigger: refetchReport } = useWebhook<
         { reportId: string; student_name?: string; assignment_title?: string },
         FinalizedReport | FinalizedReport[]
@@ -109,16 +137,85 @@ export default function ReportDetailPage() {
         manual: true,
         suppressErrorToast: true,
     });
-
+ 
     const report = React.useMemo(() => {
         if (!reportRaw) return null;
         return Array.isArray(reportRaw) ? reportRaw[0] : reportRaw;
     }, [reportRaw]);
-
+ 
     React.useEffect(() => {
         if (reportInfo.reportId) refetchReport(reportInfo);
     }, [reportInfo, refetchReport]);
-
+ 
+    const rubricGrades = React.useMemo(() => {
+        if (!report) {
+            return [] as Array<{ score: number; maxScore: number; criterionId: string; criterionName: string }>;
+        }
+ 
+        const rawRubricGrades = (report as any)?.rubric_grades;
+        const rawCriteriaRatings = (report as any)?.criteria_ratings;
+ 
+        const toGradeItems = (value: any): Array<{ score: number; maxScore: number; criterionId: string; criterionName: string }> => {
+            if (!Array.isArray(value)) {
+                return [];
+            }
+ 
+            return value
+                .map((item: any, index: number) => {
+                    const score = Number(item?.score ?? item?.rating ?? item?.points);
+                    const maxScore = Number(item?.maxScore ?? item?.maxRating ?? 8);
+ 
+                    if (!Number.isFinite(score)) {
+                        return null;
+                    }
+ 
+                    return {
+                        score,
+                        maxScore: Number.isFinite(maxScore) ? maxScore : 8,
+                        criterionId: String(item?.criterionId ?? item?.id ?? `criterion-${index}`),
+                        criterionName: String(item?.criterionName ?? item?.title ?? item?.name ?? `Criterion ${index + 1}`),
+                    };
+                })
+                .filter((item): item is { score: number; maxScore: number; criterionId: string; criterionName: string } => !!item);
+        };
+ 
+        if (Array.isArray(rawRubricGrades)) {
+            return toGradeItems(rawRubricGrades);
+        }
+ 
+        if (rawRubricGrades && typeof rawRubricGrades === 'object') {
+            const nestedGrades = (rawRubricGrades as any)?.rubricGrades
+                ?? (rawRubricGrades as any)?.grades
+                ?? (rawRubricGrades as any)?.items;
+            const normalizedNested = toGradeItems(nestedGrades);
+            if (normalizedNested.length > 0) {
+                return normalizedNested;
+            }
+        }
+ 
+        if (typeof rawRubricGrades === 'string') {
+            try {
+                const parsed = JSON.parse(rawRubricGrades);
+                if (Array.isArray(parsed)) {
+                    const normalizedParsed = toGradeItems(parsed);
+                    if (normalizedParsed.length > 0) {
+                        return normalizedParsed;
+                    }
+                }
+                if (parsed && typeof parsed === 'object') {
+                    const nestedParsed = toGradeItems(parsed.rubricGrades ?? parsed.grades ?? parsed.items);
+                    if (nestedParsed.length > 0) {
+                        return nestedParsed;
+                    }
+                }
+            } catch {
+                // Ignore invalid JSON and continue with fallback shapes.
+            }
+        }
+ 
+        return toGradeItems(rawCriteriaRatings);
+    }, [report]);
+ 
     if (isLoading && !report) {
         return (
             <div className="space-y-8 pb-20">
@@ -131,7 +228,7 @@ export default function ReportDetailPage() {
             </div>
         );
     }
-
+ 
     if (!report) {
         return (
             <div className="flex flex-col items-center justify-center py-20">
@@ -142,22 +239,22 @@ export default function ReportDetailPage() {
             </div>
         );
     }
-
+ 
     const dateString = (report.Timestamp ?? report.timestamp ?? report.created_at);
     const formattedDate = dateString ? new Date(dateString).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'N/A';
-
+ 
     return (
         <div className="w-full space-y-8 pb-20">
             {/* Premium Context Header */}
             <div className="space-y-4">
-                <button 
+                <button
                     onClick={() => router.push('/teacher/reports')}
                     className="group flex items-center gap-2 text-[10px] font-bold text-muted-foreground hover:text-primary transition-all tracking-[0.2em] uppercase"
                 >
                     <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
                     <span>Archive History</span>
                 </button>
-
+ 
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between bg-white dark:bg-[#111827] p-6 rounded-[2rem] border border-border shadow-sm">
                     <div className="flex flex-wrap items-center gap-8">
                         <div className="flex items-center gap-3">
@@ -169,9 +266,9 @@ export default function ReportDetailPage() {
                                 <p className="text-sm font-bold text-foreground truncate max-w-[180px]">{report.student_name}</p>
                             </div>
                         </div>
-
+ 
                         <Separator orientation="vertical" className="hidden lg:block h-10 bg-border" />
-
+ 
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center border border-border">
                                 <FileCheck2 className="h-5 w-5 text-primary" />
@@ -181,9 +278,9 @@ export default function ReportDetailPage() {
                                 <p className="text-sm font-bold text-foreground">Finalized Report</p>
                             </div>
                         </div>
-
+ 
                         <Separator orientation="vertical" className="hidden lg:block h-10 bg-border" />
-
+ 
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
                                 <Calendar className="h-5 w-5 text-primary" />
@@ -196,16 +293,16 @@ export default function ReportDetailPage() {
                             </div>
                         </div>
                     </div>
-
+ 
                     {isClient && (
-                        <ReportDownloadButton 
+                        <ReportDownloadButton
                             report={report}
                             formattedDate={formattedDate}
                         />
                     )}
                 </div>
             </div>
-
+ 
             <div className="grid gap-8 lg:grid-cols-12 items-start">
                 {/* Main Results Column */}
                 <div className="lg:col-span-7 space-y-8">
@@ -225,9 +322,9 @@ export default function ReportDetailPage() {
                             <div className="space-y-6">
                                 <div className="grid gap-3">
                                     <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Rubric Criteria Scores</p>
-                                    {report.rubric_grades && report.rubric_grades.length > 0 ? (
+                                    {rubricGrades.length > 0 ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {report.rubric_grades.map((item) => (
+                                            {rubricGrades.map((item) => (
                                                 <div key={item.criterionId} className="flex items-center justify-between p-4 border border-border rounded-2xl bg-secondary/5 group hover:bg-secondary/10 transition-colors">
                                                     <span className="text-xs font-bold text-foreground">{item.criterionName}</span>
                                                     <Badge variant="secondary" className="bg-white dark:bg-slate-800 text-primary border-none shadow-sm font-bold px-3">
@@ -240,9 +337,9 @@ export default function ReportDetailPage() {
                                         <p className="text-sm text-muted-foreground italic">No score breakdown available for this record.</p>
                                     )}
                                 </div>
-
+ 
                                 <Separator className="bg-border/50" />
-
+ 
                                 <div className="space-y-4">
                                     <div className="flex items-center gap-2">
                                         <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
@@ -260,7 +357,7 @@ export default function ReportDetailPage() {
                         </CardContent>
                     </Card>
                 </div>
-
+ 
                 {/* Assignment Metadata Column */}
                 <div className="lg:col-span-5 space-y-8">
                     <Card className="border-border shadow-sm overflow-hidden rounded-[2rem] bg-white dark:bg-[#111827]">
@@ -277,9 +374,9 @@ export default function ReportDetailPage() {
                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Applied Rubric</p>
                                 <p className="text-sm font-medium text-muted-foreground">{report.rubric_name}</p>
                             </div>
-                            
+                           
                             <Separator className="bg-border/50" />
-                            
+                           
                             <div className="p-4 rounded-xl border border-primary/10 bg-primary/5">
                                 <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-2">Academic Note</p>
                                 <p className="text-xs leading-relaxed text-muted-foreground font-medium">
@@ -293,3 +390,5 @@ export default function ReportDetailPage() {
         </div>
     );
 }
+ 
+ 

@@ -1,5 +1,5 @@
 'use client';
-
+ 
 import React, { useState, useMemo, useEffect } from 'react';
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-
+ 
 function ReportsPageSkeleton() {
     return (
         <div className="w-full space-y-6">
@@ -62,7 +62,7 @@ function ReportsPageSkeleton() {
         </div>
     )
 }
-
+ 
 function EmptyState() {
     return (
         <div className="flex flex-col items-center justify-center py-24 text-center bg-card rounded-[2rem] border border-dashed border-border w-full shadow-sm mt-8">
@@ -74,7 +74,7 @@ function EmptyState() {
         </div>
     )
 }
-
+ 
 function formatGeneratedDate(value: any): string {
     const trimmed = String(value ?? '').trim();
     if (!trimmed) return 'N/A';
@@ -87,7 +87,7 @@ function formatGeneratedDate(value: any): string {
     if (!Number.isNaN(parsedDate.getTime())) return format(parsedDate, 'dd MMM yyyy');
     return 'N/A';
 }
-
+ 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
     return (
         <div className="space-y-6">
@@ -101,14 +101,14 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         </div>
     );
 }
-
+ 
 export default function ReportsPage() {
     const router = useRouter();
     const [displaySearch, setDisplaySearch] = useState('');
     const [dbSearch, setDbSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
-
+ 
     useEffect(() => {
         const timer = setTimeout(() => {
             setDbSearch(displaySearch);
@@ -116,7 +116,7 @@ export default function ReportsPage() {
         }, 500);
         return () => clearTimeout(timer);
     }, [displaySearch]);
-
+ 
     const { data, isLoading, error, trigger: refetch } = useWebhook<{}, any>({
         eventName: 'REPORTS_LIST',
         payload: {},
@@ -125,22 +125,22 @@ export default function ReportsPage() {
         fallbackToCacheOnError: true,
         suppressErrorToast: true,
     });
-
+ 
     const { items, pagination } = useMemo(() => {
         const rawItems = Array.isArray(data) ? data : (data?.reports ?? data?.items ?? []);
         if (!rawItems) return { items: [], pagination: { page: 1, pageSize, total: 0 } };
-
-        const filteredList = displaySearch 
-            ? rawItems.filter((report: any) => 
-                (report.student_name ?? report.studentName ?? '').toLowerCase().includes(displaySearch.toLowerCase()) || 
+ 
+        const filteredList = displaySearch
+            ? rawItems.filter((report: any) =>
+                (report.student_name ?? report.studentName ?? '').toLowerCase().includes(displaySearch.toLowerCase()) ||
                 (report.assignment_title ?? report.assignmentTitle ?? '').toLowerCase().includes(displaySearch.toLowerCase())
               )
             : rawItems;
-
+ 
         const total = filteredList.length;
         const startIndex = (currentPage - 1) * pageSize;
         const slicedItems = filteredList.slice(startIndex, startIndex + pageSize);
-
+ 
         return {
             items: slicedItems,
             pagination: {
@@ -150,15 +150,15 @@ export default function ReportsPage() {
             }
         };
     }, [data, displaySearch, currentPage]);
-
+ 
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
     };
-
+ 
     const totalPages = Math.ceil(pagination.total / pagination.pageSize);
     const showingStart = (currentPage - 1) * pageSize + 1;
     const showingEnd = Math.min(currentPage * pageSize, pagination.total);
-
+ 
     const getPageNumbers = () => {
         const pages = [];
         const maxVisiblePages = 5;
@@ -177,10 +177,29 @@ export default function ReportsPage() {
         }
         return pages;
     };
-
+ 
+    const handleOpenReport = (report: any, fallbackIndex: number) => {
+        const reportId = String(report.id ?? report.reportId ?? report.report_id ?? `report-${fallbackIndex}`);
+        const studentName = String(report.student_name ?? report.studentName ?? '').trim();
+        const assignmentTitle = String(report.assignment_title ?? report.assignmentTitle ?? '').trim();
+ 
+        if (typeof window !== 'undefined') {
+            window.sessionStorage.setItem(
+                `report:meta:${reportId}`,
+                JSON.stringify({
+                    reportId,
+                    student_name: studentName || undefined,
+                    assignment_title: assignmentTitle || undefined,
+                }),
+            );
+        }
+ 
+        router.push(`/teacher/reports/${reportId}`);
+    };
+ 
     if (isLoading && !data) return <ReportsPageSkeleton />;
     if (error && !data) return <ErrorState onRetry={refetch} />;
-
+ 
     return (
         <div className="space-y-6">
             <OnboardingTour />
@@ -189,7 +208,7 @@ export default function ReportsPage() {
                 description="The central archive for all finalized student assessments and progress records."
                 hideBack
             />
-            
+           
             {items.length > 0 || displaySearch ? (
                 <>
                     <Card id="onboarding-report-history" className="border-border shadow-sm overflow-hidden rounded-[2rem] bg-card">
@@ -221,12 +240,12 @@ export default function ReportsPage() {
                                         {items.map((report: any, index: number) => {
                                             const reportId = report.id ?? report.reportId ?? report.report_id ?? `report-${index}`;
                                             const createdAt = report.Timestamp ?? report.timestamp ?? report.created_at ?? report.createdAt ?? report.finalized_at ?? null;
-                                            
+                                           
                                             return (
-                                                <TableRow 
-                                                    key={reportId} 
+                                                <TableRow
+                                                    key={reportId}
                                                     className="group cursor-pointer hover:bg-secondary/50 transition-colors border-b border-border last:border-0"
-                                                    onClick={() => router.push(`/teacher/reports/${reportId}`)}
+                                                    onClick={() => handleOpenReport(report, index)}
                                                 >
                                                     <TableCell className="font-bold text-foreground py-4.5 pl-8 text-sm">{report.student_name ?? report.studentName ?? 'Unknown'}</TableCell>
                                                     <TableCell className="text-muted-foreground py-4.5 text-sm">{report.assignment_title ?? report.assignmentTitle ?? 'Untitled'}</TableCell>
@@ -253,14 +272,14 @@ export default function ReportsPage() {
                             )}
                         </CardContent>
                     </Card>
-
+ 
                     {pagination.total > 0 && (
                         <div className="flex justify-center mt-4">
                             <div className="flex items-center bg-white dark:bg-slate-900 border border-border shadow-[0_15px_40px_rgba(0,0,0,0.12)] rounded-full p-1.5 px-6 w-fit min-w-[480px]">
                                 <Pagination className="mx-0 w-auto">
                                     <PaginationContent className="gap-2">
                                         <PaginationItem>
-                                            <PaginationPrevious 
+                                            <PaginationPrevious
                                                 onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
                                                 disabled={currentPage <= 1}
                                                 className={cn(
@@ -269,20 +288,20 @@ export default function ReportsPage() {
                                                 )}
                                             />
                                         </PaginationItem>
-                                        
+                                       
                                         <div className="flex items-center gap-1 mx-4">
                                             {getPageNumbers().map((page, idx) => (
                                                 <PaginationItem key={idx}>
                                                     {page === 'ellipsis' ? (
                                                         <PaginationEllipsis className="text-muted-foreground" />
                                                     ) : (
-                                                        <PaginationLink 
+                                                        <PaginationLink
                                                             isActive={page === currentPage}
                                                             onClick={() => handlePageChange(page as number)}
                                                             className={cn(
                                                                 "h-9 w-9 font-bold transition-all",
-                                                                page === currentPage 
-                                                                    ? "bg-primary text-white shadow-md shadow-primary/30" 
+                                                                page === currentPage
+                                                                    ? "bg-primary text-white shadow-md shadow-primary/30"
                                                                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                                                             )}
                                                         >
@@ -292,9 +311,9 @@ export default function ReportsPage() {
                                                 </PaginationItem>
                                             ))}
                                         </div>
-
+ 
                                         <PaginationItem>
-                                            <PaginationNext 
+                                            <PaginationNext
                                                 onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
                                                 disabled={currentPage >= totalPages}
                                                 className={cn(
@@ -305,7 +324,7 @@ export default function ReportsPage() {
                                         </PaginationItem>
                                     </PaginationContent>
                                 </Pagination>
-
+ 
                                 <div className="flex items-center gap-4 ml-6 pl-6 border-l border-border h-6">
                                     <span className="text-xs font-bold text-slate-500 whitespace-nowrap">
                                         Showing <span className="text-foreground">{showingStart}-{showingEnd}</span> of <span className="text-foreground">{pagination.total}</span> results
@@ -321,3 +340,5 @@ export default function ReportsPage() {
         </div>
     );
 }
+ 
+ 

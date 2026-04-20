@@ -42,6 +42,32 @@ const ACTOR_USERNAME_EXCLUDED_EVENTS = new Set<EventName>([
   'ASSESSMENT_SUBMIT_FOR_AI_REVIEW',
 ]);
 
+const EMPTY_RESULT_EVENT_NAMES = new Set<EventName>([
+  'STUDENT_LIST',
+  'STUDENT_REPORTS_LIST',
+  'ASSESSMENT_LIST',
+  'ASSESSMENT_GET_STUDENTS_FOR_ASSIGNMENT',
+  'RUBRIC_LIST',
+  'REPORTS_LIST',
+  'PARENT_CHILDREN_LIST',
+  'PARENT_REPORTS_LIST',
+  'GET_REVIEW_QUEUE',
+  'GET_DRAFTS',
+  'GET_RECENT_ACTIVITY',
+  'GET_STUDENT_INSIGHTS',
+]);
+
+const READ_EVENT_NAMES = new Set<EventName>([
+  ...EMPTY_RESULT_EVENT_NAMES,
+  'ASSESSMENT_GET',
+  'STUDENT_GET',
+  'RUBRIC_GET',
+  'REPORT_GET',
+  'PARENT_REPORT_GET',
+  'GET_DASHBOARD_SUMMARY',
+  'HEALTH_CHECK',
+]);
+
 export function useWebhook<P, R>({
   eventName,
   payload: initialPayload = EMPTY_PAYLOAD as P,
@@ -138,6 +164,63 @@ export function useWebhook<P, R>({
       },
       payload: enrichedPayload,
     };
+
+    const parseBackendStatusCode = (message?: string): number | null => {
+      if (!message) {
+        return null;
+      }
+      const match = message.match(/backend error:\s*(\d+)/i);
+      if (!match) {
+        return null;
+      }
+      const parsed = Number(match[1]);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const isListLikeEvent = EMPTY_RESULT_EVENT_NAMES.has(eventName);
+
+    const getEmptyResultForEvent = (): R => {
+      if (isListLikeEvent) {
+        return [] as unknown as R;
+      }
+      return null as unknown as R;
+    };
+
+    const isNoDataFailure = (status: number, backendStatus: number | null, errCode?: string, errMessage?: string) => {
+      const code = (errCode ?? '').toUpperCase();
+      const message = (errMessage ?? '').toLowerCase();
+      const statusCode = backendStatus ?? status;
+      const noDataStatusCodes = new Set([204, 404, 410, 422]);
+
+      if (noDataStatusCodes.has(statusCode)) {
+        return true;
+      }
+
+      if (code === 'NOT_FOUND' || code === 'NO_DATA' || code === 'EMPTY_RESULT') {
+        return true;
+      }
+
+      return /no items|no data|not found|empty|no rows/.test(message);
+    };
+
+    const completeWithEmptyResult = () => {
+      const emptyData = getEmptyResultForEvent();
+      setError(null);
+      setData(emptyData);
+      if (resolvedCacheKey && typeof window !== 'undefined') {
+        const storage = cacheStorage === 'local' ? window.localStorage : window.sessionStorage;
+        storage.setItem(resolvedCacheKey, JSON.stringify({ timestamp: Date.now(), data: emptyData }));
+      }
+      if (onSuccess) {
+        onSuccess(emptyData, enrichedPayload);
+      }
+      const normalizedResponse: WebhookResponse<R> = {
+        success: true,
+        data: emptyData,
+        correlationId: requestBody.requestId,
+      };
+      return normalizedResponse;
+    };
     
     try {
       console.log(`[useWebhook] ${eventName} - Sending request:`, requestBody);
@@ -229,6 +312,12 @@ export function useWebhook<P, R>({
           data: undefined,
           correlationId: requestBody.requestId,
         };
+      } else if (READ_EVENT_NAMES.has(eventName) || allowEmptyResponse) {
+        responseData = {
+          success: true,
+          data: getEmptyResultForEvent(),
+          correlationId: requestBody.requestId,
+        };
       } else {
         throw new Error('Empty response body.');
       }
@@ -244,6 +333,11 @@ export function useWebhook<P, R>({
 
       if (!response.ok || !responseData.success) {
         const errMessage = responseData.error?.message || `Backend returned error ${response.status}`;
+        const errCode = responseData.error?.code;
+        const backendStatus = parseBackendStatusCode(errMessage);
+        if (READ_EVENT_NAMES.has(eventName) && isNoDataFailure(response.status, backendStatus, errCode, errMessage)) {
+          return completeWithEmptyResult();
+        }
         console.error(`[useWebhook] ${eventName} - Webhook failure:`, { 
           status: response.status, 
           success: responseData.success, 
@@ -308,6 +402,10 @@ export function useWebhook<P, R>({
       return responseData;
     } catch (err: any) {
       console.error(`[useWebhook] ${eventName} - Exception:`, err);
+      const message = String(err?.message ?? '').toLowerCase();
+      if (READ_EVENT_NAMES.has(eventName) && /no items|no data|not found|empty|no rows/.test(message)) {
+        return completeWithEmptyResult();
+      }
       if (fallbackToCacheOnError) {
         const latestCache = readCache();
         if (latestCache && isCacheFresh(latestCache)) {

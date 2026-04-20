@@ -1,6 +1,6 @@
 'use client';
-
-import React, { useState, useCallback, useEffect } from 'react';
+ 
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useWebhook } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
@@ -14,26 +14,27 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import type { StudentListItem } from '@/lib/events';
-import { normalizeAssessmentIdentifier } from '@/lib/utils';
 import { getWebhookUrl } from '@/lib/webhook-config';
-
+ 
 const STUDENT_LIST_CACHE_KEY = 'n8n:student-list';
-
+ 
 export default function SetupPage() {
   const params = useParams<{ id: string }>();
   const assessmentId = params.id;
-  const normalizedAssessmentId = normalizeAssessmentIdentifier(assessmentId) ?? assessmentId;
   const { toast } = useToast();
   const { user, isLoading: isAuthLoading } = useAuth();
-  const actor = user ? { role: user.role, userId: user.id, userName: user.name } : undefined;
   const router = useRouter();
   const searchParams = useSearchParams();
-
+  const actor = useMemo(
+    () => (user ? { role: user.role, userId: user.id, userName: user.name } : undefined),
+    [user?.id, user?.role, user?.name]
+  );
+ 
   // Initialize selectedStudent from URL query param
   const [selectedStudent, setSelectedStudentState] = React.useState<string | null>(null);
   const [students, setStudents] = useState<StudentListItem[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
-
+ 
   const handleStudentChange = useCallback((studentIdNumber: string) => {
     setSelectedStudentState(studentIdNumber);
     if (typeof window !== 'undefined') {
@@ -43,139 +44,143 @@ export default function SetupPage() {
         sessionStorage.setItem('currentStudentName', matched.name);
       }
     }
-  }, [students]);
-  
+ 
+    const query = new URLSearchParams(searchParams.toString());
+    query.set('studentId', studentIdNumber);
+    router.replace(`/teacher/assessments/${encodeURIComponent(String(assessmentId))}/setup?${query.toString()}`);
+  }, [students, searchParams, router, assessmentId]);
+ 
   useEffect(() => {
     const studentIdFromUrl = searchParams.get('studentId');
     if (studentIdFromUrl) {
       setSelectedStudentState(studentIdFromUrl);
     }
   }, [searchParams]);
-
-  useEffect(() => {
+ 
+  const fetchStudents = useCallback(async () => {
     if (isAuthLoading) {
       return;
     }
-
+ 
     if (!user) {
       setLoadingStudents(false);
       return;
     }
-
-    const fetchStudents = async () => {
-      setLoadingStudents(true);
-      
-      try {
-        const webhookUrl = getWebhookUrl('STUDENT_LIST');
-        if (!webhookUrl) {
-          throw new Error('Student list webhook URL is not configured');
-        }
-        
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            user: user?.name,
-            ...(actor ? { actor } : {}),
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        // Handle array response from n8n with snake_case field mapping
-        if (Array.isArray(result)) {
-          const mappedStudents = result.map((student: any) => ({
-            name: student.name,
-            studentIdNumber: student.student_id,
-            grade: student.grade,
-            studentEmail: student.student_email,
-            parentEmail: student.parent_email,
-          }));
-          setStudents(mappedStudents);
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem(
-              STUDENT_LIST_CACHE_KEY,
-              JSON.stringify({ timestamp: Date.now(), data: mappedStudents })
-            );
-          }
-        } else if (result.success && result.data?.students) {
-          const mappedStudents = result.data.students.map((student: any) => ({
-            name: student.name,
-            studentIdNumber: student.student_id,
-            grade: student.grade,
-            studentEmail: student.student_email,
-            parentEmail: student.parent_email,
-          }));
-          setStudents(mappedStudents);
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem(
-              STUDENT_LIST_CACHE_KEY,
-              JSON.stringify({ timestamp: Date.now(), data: mappedStudents })
-            );
-          }
-        } else {
-          console.warn('[Setup] Unexpected response format:', result);
-          setStudents([]);
-        }
-      } catch (err) {
-        console.error('[Setup] Error fetching students:', err);
-        if (typeof window !== 'undefined') {
-          const rawValue = window.localStorage.getItem(STUDENT_LIST_CACHE_KEY);
-          if (rawValue) {
-            try {
-              const cached = JSON.parse(rawValue) as { timestamp: number; data: StudentListItem[] };
-              if (cached?.data?.length) {
-                setStudents(cached.data);
-                return;
-              }
-            } catch {
-              window.localStorage.removeItem(STUDENT_LIST_CACHE_KEY);
-            }
-          }
-        }
-        toast({
-          variant: 'destructive',
-          title: 'Failed to load students',
-          description: 'Could not fetch student list. Please refresh the page.',
-        });
-      } finally {
-        setLoadingStudents(false);
+ 
+    setLoadingStudents(true);
+ 
+    try {
+      const webhookUrl = getWebhookUrl('STUDENT_LIST');
+      if (!webhookUrl) {
+        throw new Error('Student list webhook URL is not configured');
       }
-    };
-
+ 
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user: user?.name,
+          ...(actor ? { actor } : {}),
+        }),
+      });
+ 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+ 
+      const result = await response.json();
+ 
+      // Handle array response from n8n with snake_case field mapping
+      if (Array.isArray(result)) {
+        const mappedStudents = result.map((student: any) => ({
+          name: student.name,
+          studentIdNumber: student.student_id,
+          grade: student.grade,
+          studentEmail: student.student_email,
+          parentEmail: student.parent_email,
+        }));
+        setStudents(mappedStudents);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(
+            STUDENT_LIST_CACHE_KEY,
+            JSON.stringify({ timestamp: Date.now(), data: mappedStudents })
+          );
+        }
+      } else if (result.success && result.data?.students) {
+        const mappedStudents = result.data.students.map((student: any) => ({
+          name: student.name,
+          studentIdNumber: student.student_id,
+          grade: student.grade,
+          studentEmail: student.student_email,
+          parentEmail: student.parent_email,
+        }));
+        setStudents(mappedStudents);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(
+            STUDENT_LIST_CACHE_KEY,
+            JSON.stringify({ timestamp: Date.now(), data: mappedStudents })
+          );
+        }
+      } else {
+        console.warn('[Setup] Unexpected response format:', result);
+        setStudents([]);
+      }
+    } catch (err) {
+      console.error('[Setup] Error fetching students:', err);
+      if (typeof window !== 'undefined') {
+        const rawValue = window.localStorage.getItem(STUDENT_LIST_CACHE_KEY);
+        if (rawValue) {
+          try {
+            const cached = JSON.parse(rawValue) as { timestamp: number; data: StudentListItem[] };
+            if (cached?.data?.length) {
+              setStudents(cached.data);
+              return;
+            }
+          } catch {
+            window.localStorage.removeItem(STUDENT_LIST_CACHE_KEY);
+          }
+        }
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Failed to load students',
+        description: 'Could not fetch student list. Please refresh the page.',
+      });
+    } finally {
+      setLoadingStudents(false);
+    }
+  }, [isAuthLoading, user, actor, toast]);
+ 
+  useEffect(() => {
     fetchStudents();
-  }, [toast, user, actor, isAuthLoading]);
-
+  }, [fetchStudents]);
+ 
   const { data: assessmentData, isLoading: loadingAssessment } = useWebhook<{ assessmentId: string }, { assessment: any }>({
     eventName: 'ASSESSMENT_GET',
-    payload: { assessmentId: normalizedAssessmentId },
+    payload: { assessmentId },
   });
-
-
-
+ 
+ 
+ 
   const [activeTab, setActiveTab] = React.useState<'document' | 'image'>('document');
   const [docUploadStatus, setDocUploadStatus] = React.useState<'idle' | 'uploaded' | 'analyzing' | 'done' | 'error'>('idle');
   const [imgUploadStatus, setImgUploadStatus] = React.useState<'idle' | 'uploaded' | 'analyzing' | 'done' | 'error'>('idle');
   const [lastDocFile, setLastDocFile] = React.useState<File | null>(null);
   const [lastImgFile, setLastImgFile] = React.useState<File | null>(null);
-
+ 
   // On file selection we only record the file reference; analysis runs when the user clicks Analyze
   const handleTypedFile = useCallback((file: File) => {
     setLastDocFile(file);
     setDocUploadStatus('uploaded');
   }, []);
-
+ 
   const handleImageFile = useCallback((file: File) => {
     setLastImgFile(file);
     setImgUploadStatus('uploaded');
   }, []);
-
+ 
   const analyzeSelected = React.useCallback(async () => {
     // Only analyze the currently selected tab
     if (activeTab === 'document') {
@@ -183,24 +188,24 @@ export default function SetupPage() {
         toast({ variant: 'destructive', title: 'No file uploaded', description: 'Please upload a document first.' });
         return;
       }
-
+ 
       setDocUploadStatus('analyzing');
       try {
         // Extract text from TXT file
         const formData = new FormData();
         formData.append('file', lastDocFile!);
-
+ 
         const response = await fetch('/api/extract-text', {
           method: 'POST',
           body: formData,
         });
-
+ 
         if (!response.ok) {
           throw new Error('Failed to extract text');
         }
-
+ 
         const result = await response.json();
-        
+       
         // Store extracted text and studentId in sessionStorage for the document page
         if (typeof window !== 'undefined') {
           sessionStorage.setItem('extractedText', result.text);
@@ -212,7 +217,7 @@ export default function SetupPage() {
             }
           }
         }
-
+ 
         setDocUploadStatus('done');
         toast({ title: 'Text extracted', description: 'Redirecting to document editor...' });
         setTimeout(() => router.push(`/teacher/assessments/${assessmentId}/document`), 500);
@@ -227,12 +232,12 @@ export default function SetupPage() {
         toast({ variant: 'destructive', title: 'No file uploaded', description: 'Please upload an image first.' });
         return;
       }
-
+ 
       setImgUploadStatus('analyzing');
       try {
         // Send image to n8n webhook in binary format
         const fileBuffer = await lastImgFile!.arrayBuffer();
-        
+       
         const formData = new FormData();
         formData.append('data', new Blob([fileBuffer], { type: lastImgFile!.type }));
         if (user?.name) {
@@ -242,28 +247,28 @@ export default function SetupPage() {
           formData.append('actor.role', actor.role);
           formData.append('actor.userId', actor.userId);
         }
-
+ 
         const webhookUrl = getWebhookUrl('ASSESSMENT_IMAGE_EXTRACT');
         if (!webhookUrl) {
           throw new Error('Image extract webhook URL is not configured');
         }
-
+ 
         const response = await fetch(webhookUrl, {
           method: 'POST',
           body: formData,
         });
-
+ 
         if (!response.ok) {
           throw new Error('Failed to process image');
         }
-
+ 
         const result = await response.json();
-        
+       
         // Store extracted text and studentId in sessionStorage for the document page
         if (typeof window !== 'undefined') {
           // Handle different possible response formats from n8n
           let extractedText = '';
-          
+         
           // Check if result is an array
           if (Array.isArray(result) && result.length > 0) {
             const firstElement = result[0];
@@ -273,7 +278,7 @@ export default function SetupPage() {
             // Handle object response
             extractedText = result.text || result.extractedText || result.extracted_text || result.Message || JSON.stringify(result);
           }
-          
+         
           sessionStorage.setItem('extractedText', extractedText);
           if (selectedStudent) {
             sessionStorage.setItem('currentStudentId', selectedStudent);
@@ -283,7 +288,7 @@ export default function SetupPage() {
             }
           }
         }
-
+ 
         setImgUploadStatus('done');
         toast({ title: 'Image processed', description: 'Redirecting to document editor...' });
         setTimeout(() => router.push(`/teacher/assessments/${assessmentId}/document`), 500);
@@ -294,18 +299,18 @@ export default function SetupPage() {
       }
     }
   }, [activeTab, lastDocFile, lastImgFile, docUploadStatus, imgUploadStatus, assessmentId, selectedStudent, toast, router]);
-
+ 
   const anyUploaded = (
     (activeTab === 'document' && (docUploadStatus === 'uploaded' || docUploadStatus === 'done' || docUploadStatus === 'analyzing' || docUploadStatus === 'error')) ||
     (activeTab === 'image' && (imgUploadStatus === 'uploaded' || imgUploadStatus === 'done' || imgUploadStatus === 'analyzing' || imgUploadStatus === 'error'))
   );
-
+ 
   const isAnalyzing = activeTab === 'document' ? docUploadStatus === 'analyzing' : imgUploadStatus === 'analyzing';
-
+ 
   const buttonLabel = activeTab === 'document'
     ? (isAnalyzing ? 'Analyzing...' : 'Analyze Text')
     : (isAnalyzing ? 'Processing...' : 'Analyze Image');
-
+ 
   return (
     <div className="w-full">
       <Card>
@@ -328,7 +333,7 @@ export default function SetupPage() {
                 </SelectContent>
               </Select>
             </div>
-
+ 
             <div>
               <Label>Upload</Label>
               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'document' | 'image')}>
@@ -336,17 +341,17 @@ export default function SetupPage() {
                   <TabsTrigger value="document">Document</TabsTrigger>
                   <TabsTrigger value="image">Image</TabsTrigger>
                 </TabsList>
-
+ 
                 <TabsContent value="document">
                   <div className="pt-2">
                       {docUploadStatus === 'idle' && (
-                        <FileUploader onFileSelected={handleTypedFile} acceptedFileTypes={{ 
+                        <FileUploader onFileSelected={handleTypedFile} acceptedFileTypes={{
                           'text/plain': ['.txt'],
                           'application/pdf': ['.pdf'],
                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
                         }} />
                       )}
-
+ 
                       {docUploadStatus !== 'idle' && (
                         <div className="mt-3 flex items-center justify-between">
                           <div>
@@ -363,13 +368,13 @@ export default function SetupPage() {
                       )}
                   </div>
                 </TabsContent>
-
+ 
               <TabsContent value="image">
                 <div className="pt-2">
                   {imgUploadStatus === 'idle' && (
                     <FileUploader onFileSelected={handleImageFile} acceptedFileTypes={{ 'image/png': ['.png'], 'image/jpeg': ['.jpeg', '.jpg'] }} />
                   )}
-
+ 
                   {imgUploadStatus !== 'idle' && (
                     <div className="mt-3 flex items-center justify-between">
                       <div>
@@ -388,7 +393,7 @@ export default function SetupPage() {
               </TabsContent>
               </Tabs>
             </div>
-
+ 
             <div className="flex gap-2">
               <Button disabled={!anyUploaded} onClick={analyzeSelected}>
                 {buttonLabel}
@@ -403,3 +408,4 @@ export default function SetupPage() {
     </div>
   );
 }
+ 

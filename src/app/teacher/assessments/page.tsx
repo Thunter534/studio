@@ -1,10 +1,10 @@
 'use client';
-
+ 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow, parseISO } from 'date-fns';
-
+ 
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +29,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-
+ 
 function AssessmentsPageSkeleton() {
   return (
     <div className="w-full">
@@ -69,7 +69,7 @@ function AssessmentsPageSkeleton() {
     </div>
   );
 }
-
+ 
 function EmptyState() {
     return (
         <div className="text-center py-16 border-dashed border-2 rounded-lg mt-8">
@@ -84,7 +84,7 @@ function EmptyState() {
         </div>
     )
 }
-
+ 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <Alert variant="destructive" className="mt-8">
@@ -99,16 +99,21 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
     </Alert>
   );
 }
-
+ 
 type RawAssignmentItem = {
   id?: string;
+  assessmentId?: string;
+  assessment_id?: string;
   title?: string;
+  name?: string;
+  assessment_name?: string;
+  assignment_name?: string;
   rubricName?: string;
   notes?: string | null;
 };
-
+ 
 const DELETE_ASSIGNMENT_WEBHOOK_URL = 'https://n8n.srv1336679.hstgr.cloud/webhook/ded55702-b005-431b-a943-a362583ce040';
-
+ 
 const resolveRubricName = (rubricName?: string, globalRubricName?: string): string => {
   if (rubricName) {
     return rubricName;
@@ -118,166 +123,215 @@ const resolveRubricName = (rubricName?: string, globalRubricName?: string): stri
   }
   return 'No global rubric configured';
 };
-
+ 
 function normalizeAssessmentList(
   data: AssessmentListResponse | RawAssignmentItem[] | null,
   filters: Omit<AssessmentListPayload, 'pageSize'>,
   pageSize: number,
   globalRubricName?: string,
-): AssessmentListResponse {
-  if (!data || Array.isArray(data)) {
-    const itemsArray = Array.isArray(data) ? data : [];
-    
-    // Explicitly enforce client-side slicing for array-only responses
-    const currentPage = filters.page ?? 1;
-    const startIndex = (currentPage - 1) * pageSize;
-    const paginatedArray = itemsArray.slice(startIndex, startIndex + pageSize);
-
-    const items: AssessmentListItem[] = paginatedArray.map((item, index) => {
-      const resolvedRubricName = item.rubricName || (item as any).rubricId || (item as any).rubric_id;
-
-      return {
-        assessmentId: item.id || item.title || `assignment-${startIndex + index + 1}`,
-        title: item.title || 'Untitled Assignment',
-        student: { id: 'all', name: 'All Students' },
-        rubric: {
-          name: resolveRubricName(resolvedRubricName, globalRubricName),
+): {
+  items: AssessmentListItem[];
+  counts: AssessmentListResponse['data'] extends { counts: infer Counts } ? Counts : { needsReview: number; drafts: number; finalizedThisWeek: number };
+  pagination: { page: number; pageSize: number; total: number };
+} {
+  const nowIso = new Date().toISOString();
+  const currentPage = filters.page ?? 1;
+ 
+  const directItems = Array.isArray((data as any)?.items) ? (data as any).items : null;
+  const wrappedItems = Array.isArray((data as any)?.data?.items) ? (data as any).data.items : null;
+  const itemsArray = Array.isArray(data)
+    ? data
+    : (directItems ?? wrappedItems ?? []);
+ 
+  const paginationSource = (data as any)?.pagination ?? (data as any)?.data?.pagination;
+  const countsSource = (data as any)?.counts ?? (data as any)?.data?.counts;
+ 
+  // Explicitly enforce client-side slicing for array-only responses
+  const paginatedArray = Array.isArray(data)
+    ? itemsArray.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize)
+    : itemsArray;
+ 
+  const items: AssessmentListItem[] = paginatedArray.flatMap((item: any) => {
+    const resolvedTitle = String(
+      item?.title
+      ?? item?.name
+      ?? item?.assessment_name
+      ?? item?.assignment_name
+      ?? 'Untitled Assignment'
+    ).trim();
+ 
+    if (!resolvedTitle) {
+      return [];
+    }
+ 
+    const resolvedRubricName =
+      item?.rubricName
+      ?? item?.rubric?.name
+      ?? item?.rubric_name
+      ?? item?.rubricId
+      ?? item?.rubric_id;
+ 
+    const resolvedStatus =
+      (item?.status as AssessmentStatus | undefined)
+      ?? 'draft';
+ 
+    return [{
+      assessmentId: resolvedTitle,
+      title: resolvedTitle,
+      student: {
+        id: String(item?.student?.id ?? 'all'),
+        name: String(item?.student?.name ?? 'All Students'),
+      },
+      rubric: {
+        name: resolveRubricName(
+          typeof resolvedRubricName === 'string' ? resolvedRubricName : undefined,
+          globalRubricName
+        ),
+      },
+      status: resolvedStatus,
+      updatedAt: String(item?.updatedAt ?? item?.updated_at ?? nowIso),
+      notes: item?.notes ?? undefined,
+    }];
+  });
+ 
+  return {
+    items,
+    counts: countsSource
+      ? {
+          needsReview: Number(countsSource.needsReview ?? 0),
+          drafts: Number(countsSource.drafts ?? itemsArray.length),
+          finalizedThisWeek: Number(countsSource.finalizedThisWeek ?? 0),
+        }
+      : {
+          needsReview: 0,
+          drafts: itemsArray.length,
+          finalizedThisWeek: 0,
         },
-        status: 'draft' as AssessmentStatus,
-        updatedAt: new Date().toISOString(),
-        notes: item.notes ?? undefined,
-      };
-    });
-
-    return {
-      items,
-      counts: {
-        needsReview: 0,
-        drafts: itemsArray.length,
-        finalizedThisWeek: 0,
-      },
-      pagination: {
-        page: currentPage,
-        pageSize,
-        total: itemsArray.length,
-      },
-    };
-  }
-
-  return data;
+    pagination: paginationSource
+      ? {
+          page: Number(paginationSource.page ?? currentPage),
+          pageSize: Number(paginationSource.pageSize ?? pageSize),
+          total: Number(paginationSource.total ?? itemsArray.length),
+        }
+      : {
+          page: currentPage,
+          pageSize,
+          total: itemsArray.length,
+        },
+  };
 }
-
-
+ 
+ 
 export default function AssessmentsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [filters, setFilters] = useState<Omit<AssessmentListPayload, 'pageSize'>>({ status: 'all', search: '', page: 1 });
   const [displaySearch, setDisplaySearch] = useState('');
   const pageSize = 10;
-
+ 
   const [rubricItems, setRubricItems] = useState<RubricListItem[]>([]);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [assessmentPendingDelete, setAssessmentPendingDelete] = useState<AssessmentListItem | null>(null);
   const [deleteDialogStep, setDeleteDialogStep] = useState<'list' | 'confirm'>('list');
   const [isDeletingAssignment, setIsDeletingAssignment] = useState(false);
   const [deletedAssessmentIds, setDeletedAssessmentIds] = useState<string[]>([]);
-
+ 
   useEffect(() => {
     const timer = setTimeout(() => {
       setFilters(prev => ({ ...prev, search: displaySearch, page: 1 }));
     }, 500);
     return () => clearTimeout(timer);
   }, [displaySearch]);
-
+ 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const rawValue = window.sessionStorage.getItem('rubrics:list');
     if (!rawValue) return;
     try {
-      const cached = JSON.parse(rawValue);
-      const cachedData = Array.isArray(cached?.data)
-        ? cached.data
-        : cached?.data?.rubrics ?? [];
+      const parsedRubricsCache = JSON.parse(rawValue);
+      const cachedData = Array.isArray(parsedRubricsCache?.data)
+        ? parsedRubricsCache.data
+        : parsedRubricsCache?.data?.rubrics ?? [];
       setRubricItems(cachedData);
     } catch (error) {
       window.sessionStorage.removeItem('rubrics:list');
     }
   }, []);
-
-
+ 
+ 
   const globalRubricName = useMemo(() => rubricItems[0]?.name, [rubricItems]);
-
+ 
   const { data, isLoading, error, trigger: refetch } = useWebhook<AssessmentListPayload, AssessmentListResponse | RawAssignmentItem[]>({
     eventName: 'ASSESSMENT_LIST',
     payload: { ...filters, pageSize },
     allowRawResponse: true,
   });
-
+ 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDisplaySearch(e.target.value);
   };
-
+ 
   const handlePageChange = (page: number) => {
     setFilters(prev => ({ ...prev, page }));
   };
-
+ 
   const handleRowClick = (assessmentId: string) => {
     router.push(`/teacher/assessments/${assessmentId}/select-student`);
   };
-
+ 
   const normalizedData = useMemo(() => {
-    // If backend handles search/page, we just normalize. 
+    // If backend handles search/page, we just normalize.
     // Helper handles both flat lists and paged responses.
     return normalizeAssessmentList(data ?? null, filters, pageSize, globalRubricName);
   }, [data, filters, pageSize, globalRubricName]);
-
+ 
   const items = normalizedData.items.filter((item) => !deletedAssessmentIds.includes(item.assessmentId));
   const pagination = normalizedData.pagination;
-
+ 
   const pageNumber = pagination?.page ?? 1;
   const totalPages = pagination ? Math.ceil(pagination.total / pagination.pageSize) : 1;
-
+ 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
-    
+   
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
       pages.push(1);
       if (pageNumber > 3) pages.push('ellipsis');
-      
+     
       const start = Math.max(2, pageNumber - 1);
       const end = Math.min(totalPages - 1, pageNumber + 1);
-      
+     
       for (let i = start; i <= end; i++) {
         if (!pages.includes(i)) pages.push(i);
       }
-      
+     
       if (pageNumber < totalPages - 2) pages.push('ellipsis');
       if (!pages.includes(totalPages)) pages.push(totalPages);
     }
     return pages;
   };
-
+ 
   const handleOpenDeleteConfirmation = (item: AssessmentListItem) => {
     setAssessmentPendingDelete(item);
     setDeleteDialogStep('confirm');
   };
-
+ 
   const handleDeleteAssignment = useCallback(async () => {
     if (!assessmentPendingDelete?.title) {
       return;
     }
-
+ 
     const assignmentName = assessmentPendingDelete.title;
     const assignmentId = assessmentPendingDelete.assessmentId;
-
+ 
     setIsDeleteDialogOpen(false);
     setDeleteDialogStep('list');
     setIsDeletingAssignment(true);
-
+ 
     try {
       const response = await fetch(DELETE_ASSIGNMENT_WEBHOOK_URL, {
         method: 'POST',
@@ -290,11 +344,11 @@ export default function AssessmentsPage() {
           name: assignmentName,
         }),
       });
-
+ 
       if (!response.ok) {
         throw new Error(`Delete webhook failed with status ${response.status}`);
       }
-
+ 
       setDeletedAssessmentIds((previous) => [...previous, assignmentId]);
       toast({
         title: 'Assignment deleted',
@@ -313,11 +367,11 @@ export default function AssessmentsPage() {
       setAssessmentPendingDelete(null);
     }
   }, [assessmentPendingDelete, toast, refetch]);
-
+ 
   if (isLoading && !data) {
     return <AssessmentsPageSkeleton />;
   }
-
+ 
   if (error && !data) {
     return (
       <div className="w-full">
@@ -334,10 +388,10 @@ export default function AssessmentsPage() {
       </div>
     );
   }
-
+ 
   const showingStart = (pageNumber - 1) * pageSize + 1;
   const showingEnd = Math.min(pageNumber * pageSize, pagination?.total ?? 0);
-
+ 
   return (
     <div className="w-full space-y-6">
       <OnboardingTour />
@@ -364,7 +418,7 @@ export default function AssessmentsPage() {
           </div>
         }
       />
-      
+     
       <Card id="onboarding-assessment-list" className="border-border shadow-sm overflow-hidden rounded-[2rem] bg-card">
         <CardHeader className="bg-card pb-6 px-8 pt-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -406,7 +460,7 @@ export default function AssessmentsPage() {
             )}
         </CardContent>
       </Card>
-
+ 
       {/* Replicated Luxury Pagination Pill */}
       {pagination && pagination.total > 0 && (
         <div className="flex justify-center mt-4">
@@ -414,7 +468,7 @@ export default function AssessmentsPage() {
             <Pagination className="mx-0 w-auto">
               <PaginationContent className="gap-2">
                 <PaginationItem>
-                  <PaginationPrevious 
+                  <PaginationPrevious
                     onClick={() => pageNumber > 1 && handlePageChange(pageNumber - 1)}
                     disabled={pageNumber <= 1}
                     className={cn(
@@ -423,20 +477,20 @@ export default function AssessmentsPage() {
                     )}
                   />
                 </PaginationItem>
-                
+               
                 <div className="flex items-center gap-1 mx-4">
                   {getPageNumbers().map((page, idx) => (
                     <PaginationItem key={idx}>
                       {page === 'ellipsis' ? (
                         <PaginationEllipsis className="text-muted-foreground" />
                       ) : (
-                        <PaginationLink 
+                        <PaginationLink
                           isActive={page === pageNumber}
                           onClick={() => handlePageChange(page as number)}
                           className={cn(
                             "h-9 w-9 font-bold transition-all",
-                            page === pageNumber 
-                              ? "bg-primary text-white shadow-md shadow-primary/30" 
+                            page === pageNumber
+                              ? "bg-primary text-white shadow-md shadow-primary/30"
                               : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                           )}
                         >
@@ -446,9 +500,9 @@ export default function AssessmentsPage() {
                     </PaginationItem>
                   ))}
                 </div>
-
+ 
                 <PaginationItem>
-                  <PaginationNext 
+                  <PaginationNext
                     onClick={() => pageNumber < totalPages && handlePageChange(pageNumber + 1)}
                     disabled={pageNumber >= totalPages}
                     className={cn(
@@ -459,7 +513,7 @@ export default function AssessmentsPage() {
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
-
+ 
             <div className="flex items-center gap-4 ml-6 pl-6 border-l border-border h-6">
               <span className="text-xs font-bold text-slate-500 whitespace-nowrap">
                 Showing <span className="text-foreground">{showingStart}-{showingEnd}</span> of <span className="text-foreground">{pagination.total}</span> results
@@ -468,7 +522,7 @@ export default function AssessmentsPage() {
           </div>
         </div>
       )}
-
+ 
       <Dialog
         open={isDeleteDialogOpen}
         onOpenChange={(open) => {
@@ -544,3 +598,4 @@ export default function AssessmentsPage() {
     </div>
   );
 }
+ 
