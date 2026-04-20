@@ -29,6 +29,11 @@ resource "aws_db_instance" "athena_intance" {
   skip_final_snapshot = true
   multi_az            = false
 
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = all
+  }
+
   tags = {
     Name = var.db_instance_identifier
   }
@@ -52,6 +57,11 @@ resource "aws_db_instance" "n8n_instance" {
   publicly_accessible = false
   skip_final_snapshot = true
   multi_az            = false
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = all
+  }
 
   tags = {
     Name = var.n8n_db_instance_identifier
