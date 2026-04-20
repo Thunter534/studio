@@ -29,7 +29,41 @@ resource "aws_db_instance" "athena_intance" {
   skip_final_snapshot = true
   multi_az            = false
 
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = all
+  }
+
   tags = {
     Name = var.db_instance_identifier
+  }
+}
+
+resource "aws_db_instance" "n8n_instance" {
+  identifier        = var.n8n_db_instance_identifier
+  allocated_storage = var.db_allocated_storage
+  engine            = var.db_engine
+  engine_version    = var.db_engine_version
+  instance_class    = var.db_instance_class
+  availability_zone = var.availability_zone
+  db_name           = var.n8n_db_name
+  username          = var.n8n_db_username
+  password          = var.n8n_db_password
+  port              = var.db_port
+
+  db_subnet_group_name   = aws_db_subnet_group.athena_db.name
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+
+  publicly_accessible = false
+  skip_final_snapshot = true
+  multi_az            = false
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = all
+  }
+
+  tags = {
+    Name = var.n8n_db_instance_identifier
   }
 }

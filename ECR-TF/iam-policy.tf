@@ -70,7 +70,10 @@ resource "aws_iam_policy" "ecs_task_secrets_policy" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = "${aws_secretsmanager_secret.db_secret.arn}"
+        Resource = [
+          aws_secretsmanager_secret.db_secret.arn,
+          aws_secretsmanager_secret.n8n_db_secret.arn
+        ]
       }
     ]
   })

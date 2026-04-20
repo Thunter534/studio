@@ -23,7 +23,7 @@ resource "aws_ecs_task_definition" "n8n" {
     efs_volume_configuration {
       file_system_id     = aws_efs_file_system.n8n_efs.id
       transit_encryption = "ENABLED"
-      root_directory = "/"
+      root_directory     = "/"
 
       authorization_config {
         access_point_id = aws_efs_access_point.n8n_access_point.id
@@ -37,6 +37,26 @@ resource "aws_ecs_task_definition" "n8n" {
       name      = var.n8n_container_name
       image     = var.n8n_image
       essential = true
+
+      secrets = [
+        {
+          name      = "DB_POSTGRESDB_USER"
+          valueFrom = "${aws_secretsmanager_secret.n8n_db_secret.arn}:username::"
+        },
+        {
+          name      = "DB_POSTGRESDB_PASSWORD"
+          valueFrom = "${aws_secretsmanager_secret.n8n_db_secret.arn}:password::"
+        },
+        {
+          name      = "DB_POSTGRESDB_DATABASE"
+          valueFrom = "${aws_secretsmanager_secret.n8n_db_secret.arn}:dbname::"
+        },
+        {
+          name      = "DB_POSTGRESDB_PORT"
+          valueFrom = "${aws_secretsmanager_secret.n8n_db_secret.arn}:port::"
+        }
+
+      ]
 
       portMappings = [
         {
@@ -57,7 +77,7 @@ resource "aws_ecs_task_definition" "n8n" {
       environment = [
         {
           name  = "N8N_HOST"
-          value = "0.0.0.0"
+          value = var.n8n_subdomain_name
         },
         {
           name  = "N8N_PORT"
@@ -65,12 +85,39 @@ resource "aws_ecs_task_definition" "n8n" {
         },
         {
           name  = "N8N_PROTOCOL"
-          value = "https"
+          value = "http"
         },
-
         {
-          name = "N8N_SSL_KEY"
-          value = tostring(var.n8n_port)
+          name  = "N8N_LISTEN_ADDRESS"
+          value = "0.0.0.0"
+        },
+        {
+          name  = "N8N_EDITOR_BASE_URL"
+          value = "https://${var.n8n_subdomain_name}"
+        },
+        {
+          name  = "WEBHOOK_URL"
+          value = "https://${var.n8n_subdomain_name}/"
+        },
+        {
+          name  = "N8N_PROXY_HOPS"
+          value = "1"
+        },
+        {
+          name  = "DB_TYPE"
+          value = "postgresdb"
+        },
+        {
+          name  = "DB_POSTGRESDB_HOST"
+          value = aws_db_instance.n8n_instance.address
+        },
+        {
+          name  = "DB_POSTGRESDB_SSL_ENABLED"
+          value = "true"
+        },
+        {
+          name  = "DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED"
+          value = "false"
         }
       ]
 
