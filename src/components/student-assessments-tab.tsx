@@ -136,8 +136,8 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
             }
  
             try {
-                const actorUserName = user?.name ?? studentName ?? studentId;
-                const actorUserId = user?.id ?? studentId;
+                const actorUserName = user?.name;
+                const actorUserId = user?.id;
                 const actorRole = user?.role ? normalizeWebhookActorRole(user.role) : 'teacher';
                 const requestBody = {
                     eventName: 'STUDENT_ASSESSMENT_STATUS_LIST',
@@ -145,23 +145,13 @@ export function StudentAssessmentsTab({ studentId, studentName }: { studentId: s
                     timestamp: new Date().toISOString(),
                     actor: {
                         role: actorRole,
-                        userId: actorUserId,
-                        userName: actorUserName,
+                        ...(actorUserId ? { userId: actorUserId } : {}),
+                        ...(actorUserName ? { userName: actorUserName } : {}),
                     },
                     payload: {
                         student_id: studentId,
-                        studentId: studentId,
                         student_name: studentName,
-                        studentName,
-                        name: studentName,
-                        user: actorUserName,
                     },
-                    // Keep top-level aliases for compatibility with existing workflows.
-                    student_id: studentId,
-                    studentId: studentId,
-                    student_name: studentName,
-                    studentName,
-                    name: studentName,
                 };
  
                 const response = await fetch(STUDENT_ASSESSMENT_STATUS_WEBHOOK_URL, {

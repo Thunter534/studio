@@ -287,10 +287,7 @@ export default function TeacherDashboard() {
               },
               body: JSON.stringify({
                 student_name: currentStudentName,
-                studentName: currentStudentName,
-                student_id: currentStudentName,
-                studentId: currentStudentName,
-                name: currentStudentName,
+                student_id: currentStudentId,
               }),
             });
 
@@ -410,7 +407,22 @@ export default function TeacherDashboard() {
       if (graded.length === 0) {
         setClassPerformanceLoading(true);
         try {
-          const requests = completed.map(r => { const id = (r as any).reportId ?? (r as any).report_id ?? (r as any).id; return id ? { report: r, payload: { reportId: id as string } } : null; }).filter((i): i is NonNullable<typeof i> => i !== null);
+          const requests = completed.map(r => {
+            const id = (r as any).reportId ?? (r as any).report_id ?? (r as any).id;
+            if (!id) return null;
+
+            const studentName = String((r as any).student_name ?? (r as any).studentName ?? '').trim();
+            const assignmentTitle = String((r as any).assignment_title ?? (r as any).assignmentTitle ?? (r as any).assessment_title ?? '').trim();
+
+            return {
+              report: r,
+              payload: {
+                reportId: id as string,
+                ...(studentName ? { student_name: studentName } : {}),
+                ...(assignmentTitle ? { assignment_title: assignmentTitle } : {}),
+              },
+            };
+          }).filter((i): i is NonNullable<typeof i> => i !== null);
           if (requests.length > 0) {
             const responses = await Promise.all(requests.map(r => fetchReportDetailsRef.current(r.payload)));
             if (!isMounted) return;
