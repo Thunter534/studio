@@ -62,6 +62,13 @@ interface WebhookResponse {
 | `REVIEW_OPEN`           | `teacher`   | `{ assessmentId: string }`        | `{}` (Frontend handles navigation)                           |
 | `DRAFT_OPEN`            | `teacher`   | `{ assessmentId: string }`        | `{}` (Frontend handles navigation)                           |
 
+### User Profile & Settings
+
+| `eventName`             | Actor Roles | `payload` Schema                  | `data` Schema (on success)                                   |
+| ----------------------- | ----------- | --------------------------------- | ------------------------------------------------------------ |
+| `USER_SETTINGS_GET`     | `any`       | `{}`                              | `{ settings: UserSettingsObject }`                          |
+| `USER_SETTINGS_SAVE`    | `any`       | `{ settings: UserSettingsObject }`| `{ success: boolean }`                                       |
+
 ### Student & Roster Events
 
 | `eventName`                | Actor Roles | `payload` Schema                               | `data` Schema (on success)                                     |

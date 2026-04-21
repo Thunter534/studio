@@ -10,6 +10,10 @@ export type EventName =
   | 'REVIEW_OPEN'
   | 'DRAFT_OPEN'
   
+  // User Settings & Profile
+  | 'USER_SETTINGS_GET'
+  | 'USER_SETTINGS_SAVE'
+  
   // Assessments
   | 'NEW_ASSESSMENT_START'
   | 'ASSESSMENT_CREATE_DRAFT'
@@ -53,9 +57,29 @@ export type EventName =
   | 'PARENT_CHILDREN_LIST'
   | 'PARENT_REPORTS_LIST'
   | 'PARENT_REPORT_GET'
+  | 'PARENT_REPORT_OPENED'
 
   // Other
   | 'HEALTH_CHECK';
+
+// === SETTINGS TYPES ===
+export interface UserSettings {
+  theme: 'light' | 'dark';
+  timezone: string;
+  language: string;
+  reportDeliveryDay: string;
+  aiTone: string;
+  notifications: {
+    parentViews: boolean;
+    gradingQueue: boolean;
+  };
+  classroom: {
+    proficiencyBand: string;
+    displayFormat: string;
+    termStart?: string;
+    termEnd?: string;
+  };
+}
 
 // === GENERIC ERROR/SUCCESS TYPES ===
 export interface ErrorResponse {
@@ -513,6 +537,14 @@ export interface ParentReportGetResponse {
   correlationId: string;
 }
 
+export interface ParentReportOpenedRequest {
+  eventName: 'PARENT_REPORT_OPENED';
+  requestId: string;
+  timestamp: string;
+  actor: { role: UserRole; userId: string };
+  payload: { reportId: string; studentName: string; parentEmail?: string };
+}
+
 // === OTHER EVENTS ===
 
 export interface HealthCheckRequest {
@@ -560,6 +592,7 @@ export type WebhookRequestUnion =
   | ParentChildrenListRequest
   | ParentReportsListRequest
   | ParentReportGetRequest
+  | ParentReportOpenedRequest
   | HealthCheckRequest;
 
 export type WebhookResponseUnion =
@@ -814,13 +847,14 @@ export interface AssessmentListPayload {
 }
 
 export interface AssessmentListResponse {
-  items: AssessmentListItem[];
-  counts: AssessmentListCounts;
-  pagination: {
-    page: number;
-    pageSize: number;
-    total: number;
+  success: boolean;
+  data?: {
+    items: AssessmentListItem[];
+    counts: AssessmentListCounts;
+    pagination: { page: number; pageSize: number; total: number };
   };
+  error?: ErrorResponse;
+  correlationId: string;
 }
 
 // REPORTS

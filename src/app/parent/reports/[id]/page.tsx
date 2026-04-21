@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, ArrowDown, ArrowRight, ArrowUp } from "lucide-react";
+import { Download, ArrowDown, ArrowRight, ArrowUp, Loader2 } from "lucide-react";
 import { useWebhook } from "@/lib/hooks";
+import { useAuth } from "@/hooks/use-auth";
 import type { ParentReportGetResponse } from "@/lib/events";
 import { useParams } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,23 +50,63 @@ export default function ParentReportPage() {
     const params = useParams();
     const reportId = params.id as string;
     const { toast } = useToast();
+    const { user } = useAuth();
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const { data, isLoading, error } = useWebhook<{ reportId: string }, ParentReportGetResponse>({
         eventName: 'PARENT_REPORT_GET',
         payload: { reportId }
     });
 
-    const { trigger: downloadPdf, isLoading: isDownloading } = useWebhook<{ reportId: string }, { fileContent: string }>({
-        eventName: 'REPORT_DOWNLOAD_PDF',
+    const { trigger: notifyOpened } = useWebhook({
+        eventName: 'PARENT_REPORT_OPENED',
         manual: true,
-        onSuccess: (data, payload) => {
-            console.log(`Downloading PDF for report ${payload?.reportId}`);
-            toast({ title: "PDF download started."});
-        },
-        errorMessage: "Failed to download PDF."
     });
 
     const report = data?.report;
+
+    useEffect(() => {
+        if (report && isClient && reportId) {
+            const storageKey = `athena_report_notified_${reportId}`;
+            const hasBeenNotified = localStorage.getItem(storageKey);
+            
+            if (!hasBeenNotified) {
+                notifyOpened({ 
+                    reportId, 
+                    studentName: report.childName,
+                    parentEmail: user?.email 
+                });
+                localStorage.setItem(storageKey, 'true');
+            }
+        }
+    }, [report, reportId, isClient, notifyOpened, user?.email]);
+
+    const { trigger: downloadPdf, isLoading: isDownloading } = useWebhook<{ reportId: string }, { fileContent?: string; pdfUrl?: string }>({
+        eventName: 'REPORT_DOWNLOAD_PDF',
+        manual: true,
+        onSuccess: (responseData, payload) => {
+            const data = (responseData as any)?.data ?? responseData;
+            if (data?.fileContent) {
+                const link = document.createElement('a');
+                link.href = `data:application/pdf;base64,${data.fileContent}`;
+                link.download = `Academic_Report_${report?.childName.replace(/\s+/g, '_') || reportId}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast({ title: "Report downloaded." });
+            } else if (data?.pdfUrl) {
+                window.open(data.pdfUrl, '_blank');
+                toast({ title: "Opening PDF in new tab." });
+            } else {
+                toast({ variant: "destructive", title: "Download failed", description: "The server did not return a valid file." });
+            }
+        },
+        errorMessage: "Failed to download PDF."
+    });
 
   return (
     <div>
@@ -78,8 +120,8 @@ export default function ParentReportPage() {
                     description={`${report.periodLabel} • Generated ${new Date(report.generatedAt).toLocaleDateString()}`}
                     actions={
                         report.hasPdf ? (
-                            <Button variant="secondary" onClick={() => downloadPdf({ reportId })} disabled={isDownloading}>
-                                <Download className="mr-2 h-4 w-4" />
+                            <Button variant="secondary" onClick={() => downloadPdf({ reportId })} disabled={isDownloading} className="rounded-xl font-bold">
+                                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                                 Download PDF
                             </Button>
                         ) : null
@@ -114,7 +156,6 @@ export default function ParentReportPage() {
                                     {report.sections.growthAreas.map((g,i) => <li key={i}>{g}</li>)}
                                 </ul>
                             </CardContent>
-                        </Card>
                          <Card>
                             <CardHeader><CardTitle>Rubric Snapshot</CardTitle></CardHeader>
                             <CardContent>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, FileText, ChevronRight, Search } from "lucide-react";
+import { AlertCircle, FileText, ChevronRight, Search, Activity } from "lucide-react";
 import { useWebhook } from "@/lib/hooks";
 import { format } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -92,11 +92,13 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
     return (
         <div className="space-y-6">
             <PageHeader title="Academic Reports" description="Manage records." hideBack />
-            <div className="p-12 text-center bg-card rounded-[2rem] border border-destructive/20 shadow-sm">
-                <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4 opacity-20" />
-                <p className="text-destructive font-bold text-lg">Synchronization Offline</p>
-                <p className="text-muted-foreground mb-6">Failed to load reports history.</p>
-                <Button onClick={() => onRetry()} variant="outline" className="font-bold">Retry Sync</Button>
+            <div className="p-12 text-center bg-card rounded-[2rem] border border-border shadow-sm">
+                <div className="h-16 w-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Activity className="h-8 w-8 text-muted-foreground animate-pulse" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground">Sync Notice</h3>
+                <p className="text-muted-foreground mb-8 max-w-md mx-auto">We encountered a temporary connection issue while retrieving the academic archive. Please try again or contact your administrator.</p>
+                <Button onClick={() => onRetry()} variant="outline" className="font-bold rounded-xl px-8 h-11 border-border">Retry Sync</Button>
             </div>
         </div>
     );
@@ -340,5 +342,3 @@ export default function ReportsPage() {
         </div>
     );
 }
- 
- 

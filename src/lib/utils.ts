@@ -5,9 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-error creating reports for assignments with spaces in their names
-image extraction not working
-timestamp system not workingexport function decodeMaybeEncodedParam(value?: string | null): string | null {
+export function decodeMaybeEncodedParam(value?: string | null): string | null {
   if (!value) {
     return null;
   }
@@ -41,5 +39,3 @@ export function normalizeAssessmentIdentifier(value?: string | null): string | n
   }
   return cleaned || null;
 }
- 
- 

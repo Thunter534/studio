@@ -19,7 +19,7 @@ import type { DashboardKpis, ReportListItem, StudentListItem, StudentListRespons
 import { decodeMaybeEncodedParam, normalizeAssessmentIdentifier } from '@/lib/utils';
 import { activityTracker } from '@/lib/activity-tracker';
 import { isWebhookConfigured } from '@/lib/webhook-config';
-import { FilePlus, PenSquare, AlertCircle, Activity, FileCheck2, UserPlus, Sparkles, TrendingUp, ShieldCheck, Lightbulb, Loader2 } from 'lucide-react';
+import { FilePlus, PenSquare, Activity, FileCheck2, UserPlus, Sparkles, TrendingUp, ShieldCheck, Lightbulb, Loader2 } from 'lucide-react';
 import { OnboardingTour } from '@/components/onboarding-tour';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, LineChart, Line, CartesianGrid, Legend } from 'recharts';
 import Image from 'next/image';
@@ -166,11 +166,32 @@ export default function TeacherDashboard() {
   const [reviewQueueLoading, setReviewQueueLoading] = useState(false);
   const [toReviewCount, setToReviewCount] = useState(0);
 
-  const { data: kpiData, isLoading: kpiLoading, error: kpiError, trigger: refetchKpis } = useWebhook<{}, { kpis: DashboardKpis }>({ eventName: 'GET_DASHBOARD_SUMMARY', manual: !hasDashboardSummaryEndpoint, suppressErrorToast: !hasDashboardSummaryEndpoint });
-  const { data: studentsData } = useWebhook<{}, StudentListResponse | StudentListItem[]>({ eventName: 'STUDENT_LIST', allowRawResponse: true });
-  const { data: reportsListData, isLoading: reportsListLoading } = useWebhook<{}, any>({ eventName: 'REPORTS_LIST', payload: {}, suppressErrorToast: true });
-  const { trigger: fetchStudentAssessments } = useWebhook<{ studentId: string }, any>({ eventName: 'ASSESSMENT_LIST', manual: true, allowRawResponse: true, suppressErrorToast: true });
-  const { trigger: fetchReportDetails } = useWebhook<{ reportId?: string }, FinalizedReport | { report: FinalizedReport }>({ eventName: 'REPORT_GET', manual: true, suppressErrorToast: true });
+  const { data: kpiData, isLoading: kpiLoading, error: kpiError, trigger: refetchKpis } = useWebhook<{}, { kpis: DashboardKpis }>({ 
+    eventName: 'GET_DASHBOARD_SUMMARY', 
+    manual: !hasDashboardSummaryEndpoint, 
+    suppressErrorToast: true 
+  });
+  const { data: studentsData } = useWebhook<{}, StudentListResponse | StudentListItem[]>({ 
+    eventName: 'STUDENT_LIST', 
+    allowRawResponse: true,
+    suppressErrorToast: true
+  });
+  const { data: reportsListData, isLoading: reportsListLoading } = useWebhook<{}, any>({ 
+    eventName: 'REPORTS_LIST', 
+    payload: {}, 
+    suppressErrorToast: true 
+  });
+  const { trigger: fetchStudentAssessments } = useWebhook<{ studentId: string }, any>({ 
+    eventName: 'ASSESSMENT_LIST', 
+    manual: true, 
+    allowRawResponse: true, 
+    suppressErrorToast: true 
+  });
+  const { trigger: fetchReportDetails } = useWebhook<{ reportId?: string }, FinalizedReport | { report: FinalizedReport }>({ 
+    eventName: 'REPORT_GET', 
+    manual: true, 
+    suppressErrorToast: true 
+  });
 
   const fetchReportDetailsRef = useRef(fetchReportDetails);
   useEffect(() => { fetchReportDetailsRef.current = fetchReportDetails; });
@@ -450,7 +471,8 @@ export default function TeacherDashboard() {
   };
 
   if ((hasDashboardSummaryEndpoint && kpiLoading) || reviewQueueLoading || reportsListLoading) return <DashboardLoadingSkeleton />;
-  if (hasDashboardSummaryEndpoint && kpiError) return <ErrorState onRetry={() => { if (hasDashboardSummaryEndpoint && kpiError) refetchKpis(); }} />;
+  
+  if (hasDashboardSummaryEndpoint && kpiError && kpiData === null) return <ErrorState onRetry={() => { if (hasDashboardSummaryEndpoint && kpiError) refetchKpis(); }} />;
 
   const insightData = classPerformance?.criteriaBreakdown.length ? {
     strongest: [...classPerformance.criteriaBreakdown].sort((a, b) => b.averageScore - a.averageScore)[0].criterion,
@@ -568,10 +590,10 @@ export default function TeacherDashboard() {
                               {payload.map((e: any) => <div key={e.name} className="flex items-center justify-between gap-6"><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: e.color }} /><span className="text-[10px] font-bold opacity-70">{e.name}</span></div><span className="text-xs font-black">L{formatProficiencyLevel(e.value)}</span></div>)}
                             </div>
                           ) : null} />
-                          <Line type="monotone" dataKey="Listening" stroke="#8b5cf6" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} activeDot={{ r: 8 }} />
-                          <Line type="monotone" dataKey="Speaking" stroke="#3b82f6" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} activeDot={{ r: 8 }} />
-                          <Line type="monotone" dataKey="Reading" stroke="#10b981" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} activeDot={{ r: 8 }} />
-                          <Line type="monotone" dataKey="Writing" stroke="#f59e0b" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} activeDot={{ r: 8 }} />
+                          <Line type="monotone" stroke="#8b5cf6" dataKey="Listening" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} activeDot={{ r: 8 }} />
+                          <Line type="monotone" stroke="#3b82f6" dataKey="Speaking" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} activeDot={{ r: 8 }} />
+                          <Line type="monotone" stroke="#10b981" dataKey="Reading" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} activeDot={{ r: 8 }} />
+                          <Line type="monotone" stroke="#f59e0b" dataKey="Writing" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} activeDot={{ r: 8 }} />
                           <Legend verticalAlign="top" align="right" content={({ payload }) => <div className="flex gap-5 mb-8 justify-end">{payload?.map((e: any) => <div key={e.value} className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: e.color }} /><span className="text-[10px] font-black uppercase text-muted-foreground">{e.value}</span></div>)}</div>} />
                         </LineChart>
                       )}
@@ -671,11 +693,13 @@ function DashboardLoadingSkeleton() {
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <Alert variant="destructive" className="max-w-2xl mx-auto mt-20 p-8 rounded-[2rem] border-2">
-      <AlertCircle className="h-6 w-6" />
-      <AlertTitle className="text-lg font-black uppercase tracking-widest mb-2">Sync Interrupted</AlertTitle>
-      <AlertDescription className="text-sm font-medium mb-6 opacity-80"> we encountered a connection error while retrieving your academic data.</AlertDescription>
-      <Button variant="destructive" onClick={onRetry} className="h-12 px-8 font-black rounded-xl">Retry Connection</Button>
-    </Alert>
+    <div className="max-w-2xl mx-auto mt-20 p-12 text-center bg-card rounded-[2.5rem] border border-border shadow-sm">
+      <div className="h-16 w-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Activity className="h-8 w-8 text-muted-foreground animate-pulse" />
+      </div>
+      <h3 className="text-xl font-bold text-foreground">Sync Notice</h3>
+      <p className="text-sm font-medium text-muted-foreground mb-8 max-w-md mx-auto">We encountered a temporary connection issue while retrieving your workspace data. Please try again or contact your administrator.</p>
+      <Button onClick={onRetry} variant="outline" className="h-12 px-10 font-bold rounded-xl border-border">Retry Connection</Button>
+    </div>
   );
 }

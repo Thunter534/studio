@@ -15,6 +15,10 @@ For each event, create a new workflow in n8n:
 - REVIEW_OPEN → `/webhook/review/open`
 - DRAFT_OPEN → `/webhook/draft/open`
 
+**User Settings:**
+- USER_SETTINGS_GET → `/webhook/settings/get`
+- USER_SETTINGS_SAVE → `/webhook/settings/save`
+
 **Assessment Events:**
 - ASSESSMENT_CREATE_DRAFT → `/webhook/assessment/create`
 - ASSESSMENT_GET → `/webhook/assessment/get`
@@ -62,6 +66,10 @@ N8N_REVIEW_QUEUE_URL=https://your-n8n.com/webhook/review/queue
 N8N_DRAFTS_URL=https://your-n8n.com/webhook/drafts/list
 N8N_REVIEW_OPEN_URL=https://your-n8n.com/webhook/review/open
 N8N_DRAFT_OPEN_URL=https://your-n8n.com/webhook/draft/open
+
+# User Settings
+N8N_USER_SETTINGS_GET_URL=https://your-n8n.com/webhook/settings/get
+N8N_USER_SETTINGS_SAVE_URL=https://your-n8n.com/webhook/settings/save
 
 # Assessments
 N8N_ASSESSMENT_CREATE_DRAFT_URL=https://your-n8n.com/webhook/assessment/create

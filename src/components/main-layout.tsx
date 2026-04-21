@@ -140,11 +140,10 @@ export function MainLayout({
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    const root = window.document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(newTheme);
+    localStorage.setItem('athena-theme', newTheme);
   };
 
   const dismissNotification = (notificationId: string) => {
@@ -282,40 +281,6 @@ export function MainLayout({
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  <Dialog open={isAlertsDialogOpen} onOpenChange={setIsAlertsDialogOpen}>
-                    <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden">
-                      <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
-                        <DialogTitle className="text-base font-bold uppercase tracking-widest">All Alerts</DialogTitle>
-                        <DialogDescription>Review your recent activity notifications.</DialogDescription>
-                      </DialogHeader>
-                      <div className="max-h-[60vh] overflow-y-auto">
-                        {notifications.length > 0 ? notifications.map((notif) => (
-                          <div key={`dialog-${notif.id}`} className="px-6 py-4 border-b border-border/60 last:border-0">
-                            <div className="flex w-full gap-3 items-start">
-                              {notif.isNew && <div className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />}
-                              <div className="space-y-1 min-w-0 flex-1">
-                                <p className={cn("text-sm leading-tight", notif.isNew ? "font-bold text-foreground" : "font-medium text-muted-foreground")}>
-                                  {notif.text}
-                                </p>
-                                <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider">{notif.time}</p>
-                              </div>
-                              <button
-                                type="button"
-                                aria-label="Dismiss notification"
-                                onClick={() => dismissNotification(notif.id)}
-                                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary/70 flex items-center justify-center transition-colors"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        )) : (
-                          <div className="px-6 py-12 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">No notifications</div>
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
 
                   <div className="h-5 w-px bg-slate-300/50 mx-1 hidden sm:block" />
                   

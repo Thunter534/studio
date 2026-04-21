@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, FileText, ChevronRight, Search, Users, AlertCircle } from 'lucide-react';
+import { PlusCircle, FileText, ChevronRight, Search, Users, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { StudentListItem, StudentListResponse } from '@/lib/events';
@@ -81,6 +81,28 @@ function EmptyState({ onAddStudent }: { onAddStudent: () => void }) {
     )
 }
 
+function ErrorState({ onRetry, onAddStudent }: { onRetry: () => void; onAddStudent: () => void }) {
+    return (
+        <div className="space-y-6">
+            <PageHeader title="Student Roster" description="Manage enrollment." hideBack />
+            <div className="p-12 text-center bg-card rounded-[2rem] border border-border shadow-sm">
+                <div className="h-16 w-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Activity className="h-8 w-8 text-muted-foreground animate-pulse" />
+                </div>
+                <h3 className="text-xl font-bold text-foreground">Sync Notice</h3>
+                <p className="text-muted-foreground mb-8 max-w-md mx-auto">We encountered a temporary connection issue while retrieving your roster. You can try refreshing your session or proceed to add a student manually.</p>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                    <Button onClick={() => onRetry()} variant="outline" className="font-bold rounded-xl px-8 h-11 border-border">Retry Sync</Button>
+                    <Button onClick={onAddStudent} className="bg-primary hover:bg-primary/90 font-bold px-8 h-11 rounded-xl">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Student
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function StudentsPage() {
     const router = useRouter();
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -104,6 +126,7 @@ export default function StudentsPage() {
         cacheKey: `student-list:${dbSearch}`,
         cacheTtlMs: 60_000,
         fallbackToCacheOnError: true,
+        suppressErrorToast: true,
     });
 
     const { items, pagination } = useMemo(() => {
@@ -173,21 +196,10 @@ export default function StudentsPage() {
 
     if (isLoading && !data) return <StudentListSkeleton />;
     
+    // Error state refined to a neutral "Sync Notice"
     if (error && !data) return (
-        <div className="space-y-6">
-            <PageHeader title="Student Roster" description="Manage enrollment." hideBack />
-            <div className="p-12 text-center bg-card rounded-[2rem] border border-destructive/20 shadow-sm">
-                <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4 opacity-20" />
-                <p className="text-destructive font-bold text-lg">Synchronization Offline</p>
-                <p className="text-muted-foreground mb-6">{error?.message || 'Failed to load students'}</p>
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                    <Button onClick={() => refetch()} variant="outline" className="font-bold">Retry Sync</Button>
-                    <Button onClick={() => setIsDrawerOpen(true)} className="font-bold">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Student
-                    </Button>
-                </div>
-            </div>
+        <div className="w-full">
+            <ErrorState onRetry={() => refetch()} onAddStudent={() => setIsDrawerOpen(true)} />
             <AddStudentDrawer
                 isOpen={isDrawerOpen}
                 onOpenChange={setIsDrawerOpen}

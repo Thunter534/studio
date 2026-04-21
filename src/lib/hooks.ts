@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -7,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { devLogger } from './logger';
 import { activityTracker } from './activity-tracker';
 import { normalizeWebhookActorRole } from './auth';
+
+const FRIENDLY_ERROR_MESSAGE = 'Unable to complete request. Please contact your administrator if this persists.';
 
 interface UseWebhookOptions<P> {
   eventName: EventName;
@@ -66,6 +69,7 @@ const READ_EVENT_NAMES = new Set<EventName>([
   'PARENT_REPORT_GET',
   'GET_DASHBOARD_SUMMARY',
   'HEALTH_CHECK',
+  'USER_SETTINGS_GET'
 ]);
 
 export function useWebhook<P, R>({
@@ -83,7 +87,7 @@ export function useWebhook<P, R>({
   cacheStorage = 'local',
   forceRefreshOnMount = false,
   fallbackToCacheOnError = true,
-  suppressErrorToast = false,
+  suppressErrorToast, // Default will be computed based on eventName
 }: UseWebhookOptions<P>) {
   const { user, token } = useAuth();
   const payload = useMemo(() => initialPayload, [JSON.stringify(initialPayload)]);
@@ -127,6 +131,12 @@ export function useWebhook<P, R>({
   const [error, setError] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(!manual);
   const { toast } = useToast();
+
+  // Compute suppression: default to true for READ events to avoid "No Data" popups for new users
+  const shouldSuppressToast = useMemo(() => {
+    if (suppressErrorToast !== undefined) return suppressErrorToast;
+    return READ_EVENT_NAMES.has(eventName);
+  }, [suppressErrorToast, eventName]);
 
   const callWebhook = useCallback(async (triggerPayload?: P): Promise<WebhookResponse<R> | void> => {
     if (!user || !token) {
@@ -196,11 +206,11 @@ export function useWebhook<P, R>({
         return true;
       }
 
-      if (code === 'NOT_FOUND' || code === 'NO_DATA' || code === 'EMPTY_RESULT') {
+      if (code === 'NOT_FOUND' || code === 'NO_DATA' || code === 'EMPTY_RESULT' || code === 'NOT_CONFIGURED') {
         return true;
       }
 
-      return /no items|no data|not found|empty|no rows/.test(message);
+      return /no items|no data|not found|empty|no rows|not configured/.test(message);
     };
 
     const completeWithEmptyResult = () => {
@@ -223,7 +233,6 @@ export function useWebhook<P, R>({
     };
     
     try {
-      console.log(`[useWebhook] ${eventName} - Sending request:`, requestBody);
       const response = await fetch('/api/webhook', {
         method: 'POST',
         headers: {
@@ -234,7 +243,6 @@ export function useWebhook<P, R>({
       });
 
       const rawResponse = await response.text();
-      console.log(`[useWebhook] ${eventName} - Raw response status=${response.status}`);
       
       let responseData: WebhookResponse<R>;
 
@@ -294,7 +302,6 @@ export function useWebhook<P, R>({
               responseData = parsedResponse as WebhookResponse<R>;
             }
           } catch (parseError) {
-            console.error(`[useWebhook] ${eventName} - JSON parse error:`, parseError);
             if (allowEmptyResponse && response.ok) {
               responseData = {
                 success: true,
@@ -335,14 +342,11 @@ export function useWebhook<P, R>({
         const errMessage = responseData.error?.message || `Backend returned error ${response.status}`;
         const errCode = responseData.error?.code;
         const backendStatus = parseBackendStatusCode(errMessage);
+        
+        // INTERCEPT NO DATA AS SUCCESS
         if (READ_EVENT_NAMES.has(eventName) && isNoDataFailure(response.status, backendStatus, errCode, errMessage)) {
           return completeWithEmptyResult();
         }
-        console.error(`[useWebhook] ${eventName} - Webhook failure:`, { 
-          status: response.status, 
-          success: responseData.success, 
-          error: responseData.error 
-        });
         
         const error = new Error(errMessage);
         setError(error);
@@ -351,11 +355,11 @@ export function useWebhook<P, R>({
           onError(error);
         }
         
-        if (!suppressErrorToast) {
+        if (!shouldSuppressToast) {
           toast({
             variant: 'destructive',
-            title: 'Sync Error',
-            description: errorMessage || errMessage,
+            title: 'System Notice',
+            description: errorMessage || FRIENDLY_ERROR_MESSAGE,
           });
         }
         return responseData;
@@ -365,24 +369,29 @@ export function useWebhook<P, R>({
       const mutationEvents: Record<string, (p: any) => { type: any, title: string, subtitle: string }> = {
         'STUDENT_CREATE': (p) => ({ 
           type: 'student_added', 
-          title: 'New Student Added', 
-          subtitle: `${p.name} enrolled` 
+          title: `${p.name || 'New student'} enrolled in roster`, 
+          subtitle: 'Academic profile created' 
         }),
         'ASSESSMENT_FINALIZE': (p) => ({ 
           type: 'assessment_finalized', 
-          title: 'Grading Successful', 
-          subtitle: `${p.student_name || 'Student'} · ${p.assignment_title || 'Assessment'}` 
+          title: `${p.student_name || 'Student'}, ${p.assignment_title || 'Assessment'}, grading successful`, 
+          subtitle: `Finalized by ${userName || 'Teacher'}` 
         }),
         'REPORT_GENERATE': (p) => ({ 
           type: 'report_generated', 
-          title: 'Report Compiled', 
-          subtitle: `Summary for student ${p.studentId}` 
+          title: `Academic report compiled for ${p.studentId}`, 
+          subtitle: 'Synchronized with portal' 
         }),
         'ASSESSMENT_CREATE_DRAFT': (p) => ({ 
           type: 'assessment_created', 
-          title: 'New Assignment Created', 
-          subtitle: `${p.title}` 
+          title: `New assignment draft: ${p.title}`, 
+          subtitle: 'Ready for classroom use' 
         }),
+        'PARENT_REPORT_OPENED': (p) => ({
+            type: 'report_generated',
+            title: `Parent viewed ${p.studentName || 'Student'}'s report`,
+            subtitle: 'Read confirmation received'
+        })
       };
 
       if (mutationEvents[eventName]) {
@@ -390,7 +399,6 @@ export function useWebhook<P, R>({
         activityTracker.add(info.type, info.title, info.subtitle);
       }
 
-      console.log(`[useWebhook] ${eventName} - Success`);
       setData(responseData.data as R);
       if (resolvedCacheKey && typeof window !== 'undefined') {
         const storage = cacheStorage === 'local' ? window.localStorage : window.sessionStorage;
@@ -401,15 +409,16 @@ export function useWebhook<P, R>({
       }
       return responseData;
     } catch (err: any) {
-      console.error(`[useWebhook] ${eventName} - Exception:`, err);
       const message = String(err?.message ?? '').toLowerCase();
-      if (READ_EVENT_NAMES.has(eventName) && /no items|no data|not found|empty|no rows/.test(message)) {
+      
+      // INTERCEPT NO DATA IN CATCH BLOCK
+      if (READ_EVENT_NAMES.has(eventName) && /no items|no data|not found|empty|no rows|not configured/.test(message)) {
         return completeWithEmptyResult();
       }
+      
       if (fallbackToCacheOnError) {
         const latestCache = readCache();
         if (latestCache && isCacheFresh(latestCache)) {
-          console.log(`[useWebhook] ${eventName} - Using cached data as fallback`);
           setData(latestCache.data);
           setError(null);
           setIsLoading(false);
@@ -420,11 +429,11 @@ export function useWebhook<P, R>({
       if (onError) {
         onError(err);
       }
-      if (!suppressErrorToast) {
+      if (!shouldSuppressToast) {
         toast({
           variant: 'destructive',
-          title: 'Connection Error',
-          description: errorMessage || err.message || 'Could not connect to the server.',
+          title: 'Connection Notice',
+          description: errorMessage || FRIENDLY_ERROR_MESSAGE,
         });
       }
     } finally {
@@ -443,7 +452,7 @@ export function useWebhook<P, R>({
     allowEchoResponse, 
     allowRawResponse, 
     fallbackToCacheOnError, 
-    suppressErrorToast,
+    shouldSuppressToast,
     readCache, 
     isCacheFresh, 
     resolvedCacheKey, 

@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useWebhook } from "@/lib/hooks";
 import type { ParentReportsListResponse, ParentReportsListPayload } from "@/lib/events";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertCircle, Download, ChevronRight } from "lucide-react";
+import { AlertCircle, Download, ChevronRight, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { useParams, useRouter } from "next/navigation";
@@ -52,12 +52,23 @@ export default function ChildReportsPage() {
         payload: { childId }
     });
 
-    const { trigger: downloadPdf, isLoading: isDownloading } = useWebhook<{ reportId: string }, { fileContent: string }>({
+    const { trigger: downloadPdf, isLoading: isDownloading } = useWebhook<{ reportId: string }, { fileContent?: string; pdfUrl?: string }>({
         eventName: 'REPORT_DOWNLOAD_PDF',
         manual: true,
-        onSuccess: (data, payload) => {
-            console.log(`Downloading PDF for report ${payload?.reportId}`);
-            toast({ title: "PDF download started." });
+        onSuccess: (responseData, payload) => {
+            const data = (responseData as any)?.data ?? responseData;
+            if (data?.fileContent) {
+                const link = document.createElement('a');
+                link.href = `data:application/pdf;base64,${data.fileContent}`;
+                link.download = `Report_${payload?.reportId}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast({ title: "PDF download started." });
+            } else if (data?.pdfUrl) {
+                window.open(data.pdfUrl, '_blank');
+                toast({ title: "Opening PDF in new tab." });
+            }
         },
         errorMessage: "Failed to download PDF."
     });
@@ -114,7 +125,7 @@ export default function ChildReportsPage() {
                                             <div className="flex items-center justify-end gap-2">
                                                 {report.hasPdf && (
                                                     <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); downloadPdf({ reportId: report.reportId })}} disabled={isDownloading}>
-                                                        <Download className="mr-2 h-4 w-4" /> PDF
+                                                        {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />} PDF
                                                     </Button>
                                                 )}
                                                 <Button variant="secondary" size="sm" asChild>

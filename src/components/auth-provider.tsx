@@ -13,6 +13,7 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (role?: UserRole) => Promise<void>;
   logout: () => void;
+  skipLogin: (role: UserRole) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -64,6 +65,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await startCognitoSignIn(role);
   };
 
+  const skipLogin = (role: UserRole) => {
+    const mockUser: User = {
+      id: `mock_${role}`,
+      name: role === 'teacher' ? 'Dev Teacher' : 'Dev Parent',
+      email: role === 'teacher' ? 'teacher@athena.dev' : 'parent.johnson@email.com',
+      avatarUrl: `https://picsum.photos/seed/mock_${role}/100/100`,
+      role: role,
+    };
+    
+    // We use a structured mock token that the API gateway can parse
+    const mockToken = `mock-session:${role}:${mockUser.email}`;
+    
+    sessionStorage.setItem(AUTH_STORAGE_KEYS.user, JSON.stringify(mockUser));
+    sessionStorage.setItem(AUTH_STORAGE_KEYS.token, mockToken);
+    
+    setUser(mockUser);
+    setToken(mockToken);
+    handleAuthRedirect(mockUser);
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -87,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading,
     login,
     logout,
+    skipLogin,
   };
 
   return (
