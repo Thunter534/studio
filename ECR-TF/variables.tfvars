@@ -14,6 +14,10 @@ container_name   = "athena-container"
 image_tag        = "latest"
 ecs_name_service = "Athena-ecs-service"
 
+ai_generate_url        = "https://ai.ej90.me/api/generate"
+ai_generate_model      = "eal-qwen3:latest"
+ai_generate_timeout_ms = "30000"
+
 app_bucket_name = "athena-app-storage-loic-001"
 s3_bucket_name  = "alb-logs-athena-loic-001"
 s3_tag_name     = "Athena-ALB-Logs"

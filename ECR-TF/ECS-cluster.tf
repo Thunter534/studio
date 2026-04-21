@@ -77,6 +77,18 @@ resource "aws_ecs_task_definition" "app" {
           value = var.app_bucket_name
         },
         {
+          name  = "AI_GENERATE_URL"
+          value = var.ai_generate_url
+        },
+        {
+          name  = "AI_GENERATE_MODEL"
+          value = var.ai_generate_model
+        },
+        {
+          name  = "AI_GENERATE_TIMEOUT_MS"
+          value = var.ai_generate_timeout_ms
+        },
+        {
           name  = "DB_HOST"
           value = "${aws_db_instance.athena_intance.address}"
         },

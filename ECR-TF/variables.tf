@@ -14,6 +14,10 @@ variable "container_name" {}
 variable "image_tag" {}
 variable "ecs_name_service" {}
 
+variable "ai_generate_url" {}
+variable "ai_generate_model" {}
+variable "ai_generate_timeout_ms" {}
+
 variable "app_bucket_name" {}
 variable "s3_bucket_name" {}
 variable "s3_tag_name" {}
