@@ -15,12 +15,14 @@ import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import type { StudentListItem } from '@/lib/events';
 import { getWebhookUrl } from '@/lib/webhook-config';
+import { decodeMaybeEncodedParam, normalizeAssessmentIdentifier } from '@/lib/utils';
  
 const STUDENT_LIST_CACHE_KEY = 'n8n:student-list';
  
 export default function SetupPage() {
   const params = useParams<{ id: string }>();
   const assessmentId = params.id;
+  const normalizedAssessmentId = normalizeAssessmentIdentifier(assessmentId) ?? assessmentId;
   const { toast } = useToast();
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
@@ -47,7 +49,8 @@ export default function SetupPage() {
  
     const query = new URLSearchParams(searchParams.toString());
     query.set('studentId', studentIdNumber);
-    router.replace(`/teacher/assessments/${encodeURIComponent(String(assessmentId))}/setup?${query.toString()}`);
+    const routeAssessmentId = decodeMaybeEncodedParam(String(assessmentId)) ?? String(assessmentId);
+    router.replace(`/teacher/assessments/${encodeURIComponent(routeAssessmentId)}/setup?${query.toString()}`);
   }, [students, searchParams, router, assessmentId]);
  
   useEffect(() => {
@@ -159,7 +162,7 @@ export default function SetupPage() {
  
   const { data: assessmentData, isLoading: loadingAssessment } = useWebhook<{ assessmentId: string }, { assessment: any }>({
     eventName: 'ASSESSMENT_GET',
-    payload: { assessmentId },
+    payload: { assessmentId: normalizedAssessmentId },
   });
  
  

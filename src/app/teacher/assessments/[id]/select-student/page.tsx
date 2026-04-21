@@ -12,6 +12,7 @@ import { AlertCircle, ChevronRight } from 'lucide-react';
 import { getWebhookUrl } from '@/lib/webhook-config';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
+import { decodeMaybeEncodedParam } from '@/lib/utils';
  
 const STUDENT_LIST_CACHE_KEY = 'n8n:student-list';
  
@@ -199,7 +200,8 @@ export default function SelectStudentPage() {
       sessionStorage.setItem('currentStudentName', student.name);
     }
  
-    const routeAssessmentId = encodeURIComponent(String(assessmentId));
+    const normalizedAssessmentId = decodeMaybeEncodedParam(String(assessmentId)) ?? String(assessmentId);
+    const routeAssessmentId = encodeURIComponent(normalizedAssessmentId);
     const query = new URLSearchParams({ studentId: String(student.studentIdNumber) }).toString();
     router.push(`/teacher/assessments/${routeAssessmentId}/setup?${query}`);
   };

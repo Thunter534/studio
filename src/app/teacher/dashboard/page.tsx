@@ -16,7 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { useWebhook } from '@/lib/hooks';
 import { useAuth } from '@/hooks/use-auth';
 import type { DashboardKpis, ReportListItem, StudentListItem, StudentListResponse } from '@/lib/events';
-import { normalizeAssessmentIdentifier } from '@/lib/utils';
+import { decodeMaybeEncodedParam, normalizeAssessmentIdentifier } from '@/lib/utils';
 import { activityTracker } from '@/lib/activity-tracker';
 import { isWebhookConfigured } from '@/lib/webhook-config';
 import { FilePlus, PenSquare, AlertCircle, Activity, FileCheck2, UserPlus, Sparkles, TrendingUp, ShieldCheck, Lightbulb, Loader2 } from 'lucide-react';
@@ -445,7 +445,8 @@ export default function TeacherDashboard() {
       }
     }
 
-    router.push(`/teacher/assessments/${encodeURIComponent(item.assessmentId)}/setup?studentId=${encodeURIComponent(item.studentId)}`);
+    const routeAssessmentId = decodeMaybeEncodedParam(item.assessmentId) ?? item.assessmentId;
+    router.push(`/teacher/assessments/${encodeURIComponent(routeAssessmentId)}/setup?studentId=${encodeURIComponent(item.studentId)}`);
   };
 
   if ((hasDashboardSummaryEndpoint && kpiLoading) || reviewQueueLoading || reportsListLoading) return <DashboardLoadingSkeleton />;

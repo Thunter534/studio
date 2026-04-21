@@ -4,12 +4,14 @@ import { twMerge } from "tailwind-merge"
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
- 
-export function normalizeAssessmentIdentifier(value?: string | null): string | null {
+
+error creating reports for assignments with spaces in their names
+image extraction not working
+timestamp system not workingexport function decodeMaybeEncodedParam(value?: string | null): string | null {
   if (!value) {
     return null;
   }
-  // Handle single and double-encoded route params like "%20" and "%2520".
+
   let decoded = value;
   for (let i = 0; i < 3; i += 1) {
     try {
@@ -22,6 +24,16 @@ export function normalizeAssessmentIdentifier(value?: string | null): string | n
       break;
     }
   }
+
+  return decoded;
+}
+ 
+export function normalizeAssessmentIdentifier(value?: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+  // Handle single and double-encoded route params like "%20" and "%2520".
+  let decoded = decodeMaybeEncodedParam(value) ?? value;
   decoded = decoded.replace(/%20/gi, ' ');
   let cleaned = decoded.replace(/-\d+$/, '').trim();
   if (cleaned.startsWith('assignment-')) {
