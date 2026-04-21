@@ -19,6 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { OnboardingTour } from '@/components/onboarding-tour';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { getWebhookUrl } from '@/lib/webhook-config';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Pagination,
@@ -111,8 +112,6 @@ type RawAssignmentItem = {
   rubricName?: string;
   notes?: string | null;
 };
- 
-const DELETE_ASSIGNMENT_WEBHOOK_URL = 'https://n8n.srv1336679.hstgr.cloud/webhook/ded55702-b005-431b-a943-a362583ce040';
  
 const resolveRubricName = (rubricName?: string, globalRubricName?: string): string => {
   if (rubricName) {
@@ -333,7 +332,12 @@ export default function AssessmentsPage() {
     setIsDeletingAssignment(true);
  
     try {
-      const response = await fetch(DELETE_ASSIGNMENT_WEBHOOK_URL, {
+      const webhookUrl = getWebhookUrl('ASSESSMENT_DELETE');
+      if (!webhookUrl) {
+        throw new Error('Assessment delete webhook URL is not configured');
+      }
+
+      const response = await fetch(webhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -25,22 +25,6 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTo
 import Image from 'next/image';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// --- Shared Utility: Format Proficiency Level ---
-const formatProficiencyLevel = (score: number): string => {
-  const rounded = Math.max(1, Math.min(8, Math.round(Number(score))));
-  switch (rounded) {
-    case 1: return 'A';
-    case 2: return 'B';
-    case 3: return '1';
-    case 4: return '2';
-    case 5: return '3';
-    case 6: return '4';
-    case 7: return '5';
-    case 8: return '6';
-    default: return '3';
-  }
-};
-
 const HighEndBar = (props: any) => {
   const { x, y, width, height, index, activeIndex } = props;
   const isHovered = index === activeIndex;
@@ -57,7 +41,7 @@ const HighEndBar = (props: any) => {
           <motion.g initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}>
             <rect x={x + width / 2 - 25} y={y - 35} width={50} height={24} rx={6} fill="black" />
             <text x={x + width / 2} y={y - 19} fill="white" textAnchor="middle" fontSize={10} fontWeight={800} className="font-sans">
-              LVL {formatProficiencyLevel(props.averageScore)}
+              {Number(props.value).toFixed(1)}
             </text>
             <path d={`M ${x + width / 2 - 4} ${y - 11} L ${x + width / 2} ${y - 5} L ${x + width / 2 + 4} ${y - 11} Z`} fill="black" />
           </motion.g>
@@ -75,13 +59,77 @@ type ClassPerformanceView = {
   completionRate: number;
   masteryAchieved: number;
   criteriaBreakdown: Array<{ criterion: string; averageScore: number; maxScore: number; trend: 'up' | 'down' | 'stable'; count: number; }>;
-  quarterlyData: Array<{ name: string; Listening: number; Speaking: number; Reading: number; Writing: number; }>;
+  quarterlyData: Array<{ name: string; Listening: number | null; Speaking: number | null; Reading: number | null; Writing: number | null; }>;
 };
 
 type FinalizedReport = {
-  rubric_grades?: Array<{ score: number; maxScore: number; criterionName: string; }>;
+  rubric_grades?:
+    | Array<{ score: number; maxScore: number; criterionId?: string; criterionName?: string; rating?: number; points?: number; title?: string; name?: string; }>
+    | { rubricGrades?: Array<{ score: number; maxScore: number; criterionId?: string; criterionName?: string; rating?: number; points?: number; title?: string; name?: string; }>; grades?: Array<{ score: number; maxScore: number; criterionId?: string; criterionName?: string; rating?: number; points?: number; title?: string; name?: string; }>; items?: Array<{ score: number; maxScore: number; criterionId?: string; criterionName?: string; rating?: number; points?: number; title?: string; name?: string; }>; };
+  criteria_ratings?:
+    | Array<{ rating: number; maxRating: number; criterionId?: string; criterionName?: string; score?: number; points?: number; title?: string; name?: string; }>
+    | { criteriaRatings?: Array<{ rating: number; maxRating: number; criterionId?: string; criterionName?: string; score?: number; points?: number; title?: string; name?: string; }>; grades?: Array<{ rating: number; maxRating: number; criterionId?: string; criterionName?: string; score?: number; points?: number; title?: string; name?: string; }>; items?: Array<{ rating: number; maxRating: number; criterionId?: string; criterionName?: string; score?: number; points?: number; title?: string; name?: string; }>; };
   created_at?: string;
   generatedAt?: string;
+};
+
+type GradeItem = {
+  score: number;
+  maxScore: number;
+  criterionId: string;
+  criterionName: string;
+};
+
+const normalizeGradeItems = (value: unknown): GradeItem[] => {
+  const candidates = Array.isArray(value)
+    ? value
+    : value && typeof value === 'object'
+      ? [
+          ...(Array.isArray((value as any).rubricGrades) ? (value as any).rubricGrades : []),
+          ...(Array.isArray((value as any).criteriaRatings) ? (value as any).criteriaRatings : []),
+          ...(Array.isArray((value as any).grades) ? (value as any).grades : []),
+          ...(Array.isArray((value as any).items) ? (value as any).items : []),
+        ]
+      : [];
+
+  return candidates
+    .map((item: any, index: number) => {
+      const rawScore = item?.score ?? item?.rating ?? item?.points;
+      const rawMaxScore = item?.maxScore ?? item?.maxRating ?? 8;
+      const score = Number(rawScore);
+      const maxScore = Number(rawMaxScore);
+
+      if (!Number.isFinite(score)) {
+        return null;
+      }
+
+      return {
+        score,
+        maxScore: Number.isFinite(maxScore) ? maxScore : 8,
+        criterionId: String(item?.criterionId ?? item?.id ?? item?.criterion ?? `criterion-${index}`),
+        criterionName: String(item?.criterionName ?? item?.title ?? item?.name ?? item?.criterion ?? `Criterion ${index + 1}`),
+      } satisfies GradeItem;
+    })
+    .filter((item): item is GradeItem => !!item);
+};
+
+const extractReportGrades = (report: FinalizedReport | { report: FinalizedReport } | any): GradeItem[] => {
+  const normalizedReport = (report as any)?.report ?? report;
+  const rubricGrades = normalizeGradeItems(normalizedReport?.rubric_grades);
+  if (rubricGrades.length > 0) {
+    return rubricGrades;
+  }
+  return normalizeGradeItems(normalizedReport?.criteria_ratings);
+};
+
+const resolveCanonicalCriterion = (grade: { criterionId?: string; criterionName?: string }): 'Listening' | 'Speaking' | 'Reading' | 'Writing' | null => {
+  const raw = String(grade.criterionName ?? grade.criterionId ?? '').trim().toLowerCase();
+  if (!raw) return null;
+  if (raw.includes('listen')) return 'Listening';
+  if (raw.includes('speak')) return 'Speaking';
+  if (raw.includes('read')) return 'Reading';
+  if (raw.includes('writ')) return 'Writing';
+  return null;
 };
 
 type ReadyToReviewItem = {
@@ -402,7 +450,9 @@ export default function TeacherDashboard() {
     const calc = async () => {
       if (reports.length === 0) { if (isMounted) setClassPerformance(null); return; }
       const completed = reports.filter(r => ['generated', 'sent', 'finalized', 'complete', 'completed'].includes(String((r as any).status ?? '').toLowerCase()) || !(r as any).status);
-      let graded: Array<{ report: ReportListItem; grades: any[] }> = completed.map(r => ({ report: r, grades: (r as any).rubric_grades ?? (r as any).rubricGrades ?? [] })).filter(r => r.grades.length > 0);
+      let graded: Array<{ report: ReportListItem; grades: GradeItem[] }> = completed
+        .map(r => ({ report: r, grades: extractReportGrades(r) }))
+        .filter(r => r.grades.length > 0);
 
       if (graded.length === 0) {
         setClassPerformanceLoading(true);
@@ -428,8 +478,8 @@ export default function TeacherDashboard() {
             if (!isMounted) return;
             graded = responses.flatMap((resp, idx) => {
               const norm = (resp as any)?.data?.report ?? (resp as any)?.report ?? resp;
-              const grades = norm?.rubric_grades ?? norm?.rubricGrades;
-              return Array.isArray(grades) && grades.length > 0 ? [{ report: requests[idx].report, grades }] : [];
+              const grades = extractReportGrades(norm);
+              return grades.length > 0 ? [{ report: requests[idx].report, grades }] : [];
             });
           }
         } catch { } finally { if (isMounted) setClassPerformanceLoading(false); }
@@ -441,22 +491,40 @@ export default function TeacherDashboard() {
       graded.forEach(({ report, grades }) => {
         const month = new Date(report.generatedAt).getMonth();
         let q = 'Q1'; if (month >= 3 && month <= 5) q = 'Q2'; if (month >= 6 && month <= 8) q = 'Q3'; if (month >= 9 && month <= 11) q = 'Q4';
-        grades.forEach(g => { const name = g.criterionName || g.criterion_name; if (base.includes(name)) { if (!quarterly[q][name]) quarterly[q][name] = { sum: 0, count: 0 }; quarterly[q][name].sum += Number(g.score); quarterly[q][name].count += 1; } });
+        grades.forEach(g => {
+          const name = resolveCanonicalCriterion(g);
+          if (name) {
+            if (!quarterly[q][name]) quarterly[q][name] = { sum: 0, count: 0 };
+            quarterly[q][name].sum += Number(g.score);
+            quarterly[q][name].count += 1;
+          }
+        });
       });
 
       const quarterlyData = Object.entries(quarterly).map(([qName, stats]) => {
-        const data: any = { name: qName }; base.forEach(c => { const s = stats[c]; data[c] = s && s.count > 0 ? Number((s.sum / s.count).toFixed(1)) : 4.0; }); return data;
+        const data: any = { name: qName };
+        base.forEach(c => {
+          const s = stats[c];
+          data[c] = s && s.count > 0 ? Number((s.sum / s.count).toFixed(1)) : null;
+        });
+        return data;
       });
 
       const cMap = new Map<string, { sum: number; count: number; vals: number[] }>();
       base.forEach(c => cMap.set(c, { sum: 0, count: 0, vals: [] }));
       graded.forEach(g => g.grades.forEach(grade => {
-        const name = grade?.criterionName ?? grade?.criterion_name; const score = Number(grade?.score);
-        if (base.includes(name) && !Number.isNaN(score)) { const ex = cMap.get(name)!; ex.sum += score; ex.count += 1; ex.vals.push(score); }
+        const name = resolveCanonicalCriterion(grade);
+        const score = Number(grade?.score);
+        if (name && !Number.isNaN(score)) {
+          const ex = cMap.get(name)!;
+          ex.sum += score;
+          ex.count += 1;
+          ex.vals.push(score);
+        }
       }));
 
       const breakdown = Array.from(cMap.entries()).map(([criterion, s]) => {
-        const avg = s.count > 0 ? Number((s.sum / s.count).toFixed(2)) : 5.0;
+        const avg = s.count > 0 ? Number((s.sum / s.count).toFixed(2)) : 0;
         const trend = (s.vals.length > 1 ? s.vals[s.vals.length - 1] - s.vals[0] : 0) > 0.15 ? 'up' : (s.vals.length > 1 ? s.vals[s.vals.length - 1] - s.vals[0] : 0) < -0.15 ? 'down' : 'stable';
         return { criterion, averageScore: avg, maxScore: 8, trend, count: s.count };
       });
@@ -486,12 +554,16 @@ export default function TeacherDashboard() {
   
   if (hasDashboardSummaryEndpoint && kpiError && kpiData === null) return <ErrorState onRetry={() => { if (hasDashboardSummaryEndpoint && kpiError) refetchKpis(); }} />;
 
-  const insightData = classPerformance?.criteriaBreakdown.length ? {
-    strongest: [...classPerformance.criteriaBreakdown].sort((a, b) => b.averageScore - a.averageScore)[0].criterion,
-    strongestLevel: formatProficiencyLevel([...classPerformance.criteriaBreakdown].sort((a, b) => b.averageScore - a.averageScore)[0].averageScore),
-    weakestLabel: classPerformance.criteriaBreakdown.filter(i => i.criterion !== [...classPerformance.criteriaBreakdown].sort((a, b) => b.averageScore - a.averageScore)[0].criterion).map(i => i.criterion).join(', '),
-    suggestion: `Try adding more ${classPerformance.criteriaBreakdown.filter(i => i.criterion !== [...classPerformance.criteriaBreakdown].sort((a, b) => b.averageScore - a.averageScore)[0].criterion).map(i => i.criterion).slice(0, 2).join(' and ')} activities next.`
-  } : null;
+  const insightData = classPerformance?.criteriaBreakdown.length ? (() => {
+    const sorted = [...classPerformance.criteriaBreakdown].sort((a, b) => b.averageScore - a.averageScore);
+    const strongest = sorted[0];
+    return {
+      strongest: strongest.criterion,
+      strongestScore: strongest.averageScore,
+      weakestLabel: classPerformance.criteriaBreakdown.filter(i => i.criterion !== strongest.criterion).map(i => i.criterion).join(', '),
+      suggestion: `Try adding more ${classPerformance.criteriaBreakdown.filter(i => i.criterion !== strongest.criterion).map(i => i.criterion).slice(0, 2).join(' and ')} activities next.`
+    };
+  })() : null;
 
   return (
     <div className="space-y-8 pb-12 max-w-[1600px] mx-auto">
@@ -595,11 +667,11 @@ export default function TeacherDashboard() {
                         <LineChart data={classPerformance.quarterlyData} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="hsl(var(--border) / 0.5)" />
                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 800 }} dy={10} />
-                          <YAxis domain={[0, 8]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 600 }} tickFormatter={(v) => v > 0 ? `L${v}` : '0'} />
+                          <YAxis domain={[0, 8]} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 600 }} />
                           <RechartsTooltip content={({ active, payload }) => (active && payload?.length) ? (
                             <div className="bg-black text-white p-4 rounded-[1.5rem] shadow-2xl border border-white/10 space-y-2">
                               <p className="text-[10px] font-black uppercase tracking-widest border-b border-white/10 pb-2">{payload[0].payload.name}</p>
-                              {payload.map((e: any) => <div key={e.name} className="flex items-center justify-between gap-6"><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: e.color }} /><span className="text-[10px] font-bold opacity-70">{e.name}</span></div><span className="text-xs font-black">L{formatProficiencyLevel(e.value)}</span></div>)}
+                              {payload.filter((e: any) => Number.isFinite(Number(e.value))).map((e: any) => <div key={e.name} className="flex items-center justify-between gap-6"><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: e.color }} /><span className="text-[10px] font-bold opacity-70">{e.name}</span></div><span className="text-xs font-black">{Number(e.value).toFixed(1)}</span></div>)}
                             </div>
                           ) : null} />
                           <Line type="monotone" stroke="#8b5cf6" dataKey="Listening" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} activeDot={{ r: 8 }} />
@@ -670,7 +742,7 @@ export default function TeacherDashboard() {
               {insightData ? (
                 <div className="space-y-8">
                   <div className="space-y-4">
-                    <p className="text-sm leading-relaxed text-foreground font-black">Your class is strongest in <span className="text-primary">{insightData.strongest} (Level {insightData.strongestLevel})</span>.</p>
+                    <p className="text-sm leading-relaxed text-foreground font-black">Your class is strongest in <span className="text-primary">{insightData.strongest} (Score {insightData.strongestScore.toFixed(1)})</span>.</p>
                     <p className="text-xs leading-relaxed text-muted-foreground font-bold">Students are still working on {insightData.weakestLabel}.</p>
                   </div>
                   <div className="pt-8 border-t border-border/50">

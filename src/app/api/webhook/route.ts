@@ -19,21 +19,6 @@ function normalizeActorRole(role: unknown): 'teacher' | 'parent' | null {
   return null;
 }
  
-const RUBRIC_EVENTS = new Set([
-  'RUBRIC_LIST',
-  'RUBRIC_GET',
-  'ASSESSMENT_SET_RUBRIC',
-  'ASSESSMENT_SAVE_RUBRIC_OVERRIDE',
-]);
- 
-const ACTOR_USERNAME_EXCLUDED_EVENTS = new Set([
-  'RUBRIC_LIST',
-  'RUBRIC_GET',
-  'ASSESSMENT_SET_RUBRIC',
-  'ASSESSMENT_SAVE_RUBRIC_OVERRIDE',
-  'ASSESSMENT_SUBMIT_FOR_AI_REVIEW',
-]);
- 
 export async function POST(req: NextRequest) {
   try {
     const body: WebhookRequest = await req.json();
@@ -98,33 +83,22 @@ export async function POST(req: NextRequest) {
     const resolvedUserName = bodyActor.userName || bodyPayload?.user || null;
     const resolvedUserId = bodyActor.userId || null;
     const resolvedUserRole = normalizeActorRole(bodyActor.role);
-    const isRubricEvent = RUBRIC_EVENTS.has(body.eventName as string);
-    const includePayloadUser = !isRubricEvent;
-    const includeActorUserName = !ACTOR_USERNAME_EXCLUDED_EVENTS.has(body.eventName as string);
  
-    const enrichedBody = resolvedUserName && (includePayloadUser || includeActorUserName)
+    const enrichedBody = resolvedUserName
       ? {
           ...(body as any),
-          ...(includeActorUserName
+          actor: {
+            ...bodyActor,
+            ...(resolvedUserRole ? { role: resolvedUserRole } : {}),
+            ...(resolvedUserId ? { userId: resolvedUserId } : {}),
+            userName: resolvedUserName,
+          },
+          payload: bodyPayload && typeof bodyPayload === 'object' && !Array.isArray(bodyPayload)
             ? {
-                actor: {
-                  ...bodyActor,
-                  ...(resolvedUserRole ? { role: resolvedUserRole } : {}),
-                  ...(resolvedUserId ? { userId: resolvedUserId } : {}),
-                  userName: resolvedUserName,
-                },
+                ...bodyPayload,
+                user: resolvedUserName,
               }
-            : {}),
-          ...(includePayloadUser
-            ? {
-                payload: bodyPayload && typeof bodyPayload === 'object' && !Array.isArray(bodyPayload)
-                  ? {
-                      ...bodyPayload,
-                      user: resolvedUserName,
-                    }
-                  : bodyPayload,
-              }
-            : {}),
+            : bodyPayload,
         }
       : body;
  

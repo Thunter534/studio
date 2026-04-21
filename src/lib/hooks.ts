@@ -30,13 +30,6 @@ interface UseWebhookOptions<P> {
 }
 
 const EMPTY_PAYLOAD = {};
-const RUBRIC_EVENTS = new Set<EventName>([
-  'RUBRIC_LIST',
-  'RUBRIC_GET',
-  'ASSESSMENT_SET_RUBRIC',
-  'ASSESSMENT_SAVE_RUBRIC_OVERRIDE',
-]);
-
 const EMPTY_RESULT_EVENT_NAMES = new Set<EventName>([
   'STUDENT_LIST',
   'STUDENT_REPORTS_LIST',
@@ -138,12 +131,10 @@ export function useWebhook<P, R>({
     setIsLoading(true);
     setError(null);
     const finalPayload = triggerPayload ?? payload;
-    const includePayloadUser = !RUBRIC_EVENTS.has(eventName);
-    const includeActorUserName = !ACTOR_USERNAME_EXCLUDED_EVENTS.has(eventName);
     const userName = user.name;
 
     const enrichedPayload = (() => {
-      if (!includePayloadUser || !userName) {
+      if (!userName) {
         return finalPayload;
       }
       if (!finalPayload || typeof finalPayload !== 'object' || Array.isArray(finalPayload)) {
@@ -162,7 +153,7 @@ export function useWebhook<P, R>({
       actor: {
         role: normalizeWebhookActorRole(user.role),
         userId: user.id,
-        ...(includeActorUserName && userName ? { userName } : {}),
+        ...(userName ? { userName } : {}),
       },
       payload: enrichedPayload,
     };
@@ -324,7 +315,7 @@ export function useWebhook<P, R>({
       devLogger.log({
           timestamp: new Date().toISOString(),
           eventName,
-          request: requestBody,
+          request: requestBody as WebhookRequest,
           response: responseData,
           status: responseData.success ? 'success' : 'error',
           correlationId: responseData.correlationId,
