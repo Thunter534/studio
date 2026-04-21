@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import type { WebhookRequest, WebhookResponse } from '@/lib/events';
 import { getWebhookUrl } from '@/lib/webhook-config';
+import { requestAiEvaluation } from '@/lib/ai-evaluation';
+
+export const maxDuration = 35;
  
 function normalizeActorRole(role: unknown): 'teacher' | 'parent' | null {
   if (typeof role !== 'string') {
@@ -34,6 +37,31 @@ const ACTOR_USERNAME_EXCLUDED_EVENTS = new Set([
 export async function POST(req: NextRequest) {
   try {
     const body: WebhookRequest = await req.json();
+
+    if (body.eventName === 'ASSESSMENT_SUBMIT_FOR_AI_REVIEW') {
+      const aiResult = await requestAiEvaluation((body as any).payload);
+      const correlationId = body.requestId || 'ai-review-' + Date.now();
+
+      if (!aiResult.ok) {
+        return NextResponse.json<WebhookResponse>({
+          success: false,
+          error: {
+            message: aiResult.message,
+            code: aiResult.code,
+          },
+          correlationId,
+        }, { status: aiResult.status });
+      }
+
+      return NextResponse.json<WebhookResponse>({
+        success: true,
+        data: {
+          evaluation: aiResult.evaluation,
+          text: aiResult.evaluation,
+        },
+        correlationId,
+      });
+    }
  
     // Standard live events list prior to diagnostic expansion
     const liveEvents = [

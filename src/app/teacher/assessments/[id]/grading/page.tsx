@@ -233,6 +233,10 @@ export default function GradingPage() {
     if (typeof rawOutput?.content?.text === 'string') {
       return rawOutput.content.text;
     }
+
+    if (typeof rawOutput?.evaluation === 'string') {
+      return rawOutput.evaluation;
+    }
  
     if (Array.isArray(rawOutput?.content)) {
       const extracted = extractTextFromParts(rawOutput.content);

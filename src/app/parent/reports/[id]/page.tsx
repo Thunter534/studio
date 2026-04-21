@@ -156,6 +156,7 @@ export default function ParentReportPage() {
                                     {report.sections.growthAreas.map((g,i) => <li key={i}>{g}</li>)}
                                 </ul>
                             </CardContent>
+                        </Card>
                          <Card>
                             <CardHeader><CardTitle>Rubric Snapshot</CardTitle></CardHeader>
                             <CardContent>

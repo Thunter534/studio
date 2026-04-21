@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useWebhook } from "@/lib/hooks";
 import { normalizeAssessmentIdentifier } from "@/lib/utils";
 import { getWebhookUrl } from '@/lib/webhook-config';
+import { getAllowedProficiencyLevelsForGrade, normalizeStudentGrade } from '@/lib/grade-rules';
  
 const ASSESSMENT_GET_CACHE_KEY_PREFIX = 'n8n:assessment:get:';
 const ASSESSMENT_LIST_CACHE_KEY = 'n8n:assessment:list';
@@ -417,10 +418,35 @@ export default function DocumentPage() {
           sessionStorage.setItem('currentAssignmentTitle', resolvedTitle);
         }
       }
-      // Prepare payload for n8n webhook
+      // Prepare only the isolated variables; the server builds the strict AI prompt.
+      const resolvedGrade = normalizeStudentGrade(
+        assessmentData.assessment.student?.grade
+          || assessmentData.assessment.student_grade
+          || assessmentData.assessment.studentGrade
+          || assessmentData.assessment.grade
+      );
+      const resolvedTask = assignmentTitle
+        || assessmentData.assessment.title
+        || assessmentData.assessment.name
+        || normalizedAssessmentName
+        || assessmentId;
+      const resolvedCeiling = assessmentData.assessment.ceiling
+        || assessmentData.assessment.ealCeiling
+        || assessmentData.assessment.eal_ceiling
+        || assessmentData.assessment.levelCeiling
+        || assessmentData.assessment.level_ceiling
+        || assessmentData.assessment.rubricName
+        || assessmentData.assessment.rubric_name
+        || rubricName
+        || 'Unknown';
       const payload = {
         assessmentId: normalizedAssessmentName ?? assessmentId,
         studentId: studentId || assessmentData.assessment.student?.id,
+        grade: resolvedGrade || 'Unknown',
+        ceiling: resolvedCeiling,
+        task: resolvedTask,
+        student_text: editableText,
+        valid_levels: getAllowedProficiencyLevelsForGrade(resolvedGrade).join(','),
         extractedText: editableText,
         rubricName: rubricName
           || assessmentData.assessment.rubricName
@@ -434,21 +460,17 @@ export default function DocumentPage() {
       console.log('[Document] Payload being sent:', payload);
  
       let result: any;
-      if (getWebhookUrl('ASSESSMENT_SUBMIT_FOR_AI_REVIEW')) {
-        const response = await submitForAiReview(payload);
-        if ((response as any)?.success === false) {
-          throw new Error((response as any)?.error?.message || 'Failed to submit for AI review');
-        }
-        result = (response as any)?.data ?? response;
- 
-        if (!result) {
-          throw new Error('Failed to submit for AI review');
-        }
- 
-        console.log('[Document] Success response via gateway:', result);
-      } else {
-        throw new Error('ASSESSMENT_SUBMIT_FOR_AI_REVIEW webhook is not configured.');
+      const response = await submitForAiReview(payload);
+      if ((response as any)?.success === false) {
+        throw new Error((response as any)?.error?.message || 'Failed to submit for AI review');
       }
+      result = (response as any)?.data ?? response;
+ 
+      if (!result) {
+        throw new Error('Failed to submit for AI review');
+      }
+
+      console.log('[Document] Success response via gateway:', result);
  
       const extractAiTextFromResult = (value: any): string | null => {
         if (!value) {
@@ -496,6 +518,9 @@ export default function DocumentPage() {
         }
         if (typeof value?.content?.text === 'string') {
           return value.content.text;
+        }
+        if (typeof value?.evaluation === 'string') {
+          return value.evaluation;
         }
         if (Array.isArray(value?.content)) {
           const extractedContent = extractFromParts(value.content);
